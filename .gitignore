@@ -2,10 +2,18 @@
 *.csv
 *.xlsx
 *.xls
+*.xlsm
 
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+.venv*/
+env/
 
 .ipynb_checkpoints/
+test_load.py
+
+# OS
+.DS_Store
+Thumbs.db
