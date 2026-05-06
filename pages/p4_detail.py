@@ -292,7 +292,7 @@ else:
         st.info("Không có dữ liệu Covenant cho kỳ đã chọn.")
     else:
         tabs = st.tabs([str(c) for c in commitments])
-        for tab, commit in zip(tabs, commitments):
+        for tab_i, (tab, commit) in enumerate(zip(tabs, commitments)):
             with tab:
                 sub = rc_df[rc_df["chi_tieu_cam_ket"] == commit].sort_values(["nam", "quy"])
                 if sub.empty:
@@ -302,7 +302,6 @@ else:
                 threshold = float(threshold_vals.iloc[0]) if not threshold_vals.empty else None
 
                 fig = go.Figure()
-                # Normalise status to lowercase for case-insensitive comparison
                 sub_status = sub["status"].str.strip().str.lower() if sub["status"].notna().any() else sub["status"]
                 for status_val, color in [("ok", "#28a745"), ("break", "#dc3545")]:
                     seg = sub[sub_status == status_val]
@@ -328,7 +327,7 @@ else:
                     margin=dict(l=0, r=0, t=30, b=0),
                     showlegend=True,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"p4_covenant_{tab_i}")
 
                 latest = sub.dropna(subset=["gia_tri_thuc_hien"]).tail(1)
                 if not latest.empty:

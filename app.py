@@ -1,4 +1,11 @@
+import os
+
 import streamlit as st
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 from utils.sidebar import init_session_state, render_sidebar
 
 st.set_page_config(
@@ -7,6 +14,21 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Password gate ─────────────────────────────────────────────────────────────
+_APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
+
+if _APP_PASSWORD and not st.session_state.get("authenticated"):
+    st.title("GELEX · CASHPLAN")
+    pwd = st.text_input("Mật khẩu", type="password")
+    if st.button("Đăng nhập"):
+        if pwd == _APP_PASSWORD:
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Mật khẩu không đúng.")
+    st.stop()
+
+# ── App ───────────────────────────────────────────────────────────────────────
 init_session_state()
 
 with st.sidebar:
