@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GELEX · CashPlan Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js"></script>
+<style>
+/* ── Reset & Base ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:13px;background:#F0F2F6;color:#1F2937;display:flex;min-height:100vh}
+
+/* ── SIDEBAR  →  st.sidebar ── */
+#sidebar{
+  width:220px;min-width:220px;background:#FFFFFF;border-right:1px solid #D1D5DB;
+  padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto
+}
+.sidebar-logo{padding:16px 18px;font-size:14px;font-weight:700;color:#1565C0;border-bottom:1px solid #D1D5DB;letter-spacing:.5px}
+.sidebar-section{padding:10px 18px 4px;font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;
+  color:#6B7280;font-size:12px;border-left:3px solid transparent;transition:all .15s
+}
+.nav-item:hover{background:#F3F4F6;color:#1F2937}
+.nav-item.active{background:#EFF6FF;color:#1565C0;border-left-color:#1565C0;font-weight:600}
+.nav-icon{font-size:14px;width:18px;text-align:center}
+.sidebar-divider{height:1px;background:#D1D5DB;margin:8px 0}
+.sidebar-filter{padding:10px 18px}
+.sidebar-filter label{font-size:10px;color:#6B7280;text-transform:uppercase;display:block;margin-bottom:5px}
+.sidebar-filter select,.sidebar-filter input[type=checkbox]{font-size:11px;font-family:Arial}
+.sidebar-filter .check-group{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.sidebar-filter .check-group label{font-size:11px;color:#374151;display:flex;align-items:center;gap:6px;text-transform:none;cursor:pointer}
+
+/* ── MAIN CONTENT  →  st.container ── */
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#FFF;border-bottom:1px solid #D1D5DB;padding:10px 28px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:15px;font-weight:700;color:#1F2937}
+.topbar-sub{font-size:11px;color:#6B7280}
+.content{padding:20px 28px;flex:1}
+
+/* ── PAGE  →  st.container / columns ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── st.metric() ── */
+.metric-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.metric{
+  background:#FFF;border:1px solid #D1D5DB;border-radius:8px;
+  padding:12px 16px;flex:1;min-width:120px
+}
+.metric.ok{border-color:#86EFAC}
+.metric.fail{border-color:#FCA5A5}
+.metric .m-label{font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.metric .m-value{font-size:20px;font-weight:700;color:#1F2937}
+.metric .m-value.pos{color:#166534}
+.metric .m-value.neg{color:#991B1B}
+.metric .m-value.warn{color:#92400E}
+.metric .m-value.blue{color:#1565C0}
+.metric .m-delta{font-size:10px;color:#6B7280;margin-top:2px}
+
+/* ── st.tabs() ── */
+.stabs{display:flex;border-bottom:1px solid #D1D5DB;margin-bottom:16px;gap:0}
+.stab{
+  padding:8px 18px;background:transparent;border:none;border-bottom:2px solid transparent;
+  color:#6B7280;cursor:pointer;font-size:12px;font-family:Arial;font-weight:400
+}
+.stab.active{color:#1565C0;border-bottom-color:#1565C0;font-weight:700}
+
+/* ── st.container / expander ── */
+.stcard{background:#FFF;border:1px solid #D1D5DB;border-radius:8px;padding:16px 20px;margin-bottom:14px}
+.stcard-title{font-size:13px;font-weight:700;color:#1F2937;margin-bottom:4px}
+.stcard-sub{font-size:11px;color:#6B7280;margin-bottom:12px}
+
+/* ── st.columns() ── */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.cols4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+
+/* ── st.selectbox / multiselect ── */
+.filter-bar{
+  display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;
+  padding:10px 14px;background:#F9FAFB;border:1px solid #D1D5DB;border-radius:8px;margin-bottom:14px
+}
+.filter-item{display:flex;flex-direction:column;gap:4px}
+.filter-item label{font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px}
+.filter-item select{font-size:11px;padding:4px 8px;border:1px solid #D1D5DB;border-radius:4px;background:#FFF;font-family:Arial}
+.btn-group{display:flex;gap:4px}
+.btn{
+  padding:5px 12px;border-radius:4px;border:1px solid #D1D5DB;background:transparent;
+  color:#6B7280;cursor:pointer;font-size:11px;font-family:Arial;transition:all .15s
+}
+.btn.active{border-color:#1565C0;background:#EFF6FF;color:#1565C0;font-weight:600}
+.btn.active.gee{border-color:#1565C0;background:#EFF6FF;color:#1565C0}
+.btn.active.gel{border-color:#6A1B9A;background:#FAF5FF;color:#6A1B9A}
+
+/* ── st.dataframe() ── */
+.sttable{width:100%;border-collapse:collapse;font-size:11px}
+.sttable thead tr{background:#F9FAFB;border-bottom:1px solid #D1D5DB}
+.sttable th{padding:7px 10px;text-align:left;color:#6B7280;font-weight:500;font-size:10px}
+.sttable tbody tr{border-bottom:1px solid #F3F4F6}
+.sttable tbody tr:hover{background:#F9FAFB}
+.sttable td{padding:7px 10px;color:#374151}
+
+/* ── st.badge / tag ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600}
+.badge.cfo{background:#DBEAFE;color:#1565C0}
+.badge.cfi{background:#FFEDD5;color:#9A3412}
+.badge.cff{background:#F3E8FF;color:#6B21A8}
+.badge.stable{background:#DCFCE7;color:#166534}
+.badge.unstable{background:#FEE2E2;color:#991B1B}
+.badge.internal{background:#EDE9FE;color:#5B21B6}
+.badge.external{background:#F3F4F6;color:#4B5563}
+.badge.ok{background:#DCFCE7;color:#166534}
+.badge.break{background:#FEE2E2;color:#991B1B}
+.badge.partial{background:#FEF9C3;color:#92400E}
+.badge.gee{background:#DBEAFE;color:#1565C0}
+.badge.gel{background:#F3E8FF;color:#6A1B9A}
+
+/* ── st.warning / st.error ── */
+.stwarning{padding:10px 14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:11px;color:#92400E;margin-bottom:10px}
+.sterror{padding:10px 14px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;font-size:11px;color:#991B1B;margin-bottom:10px}
+.stinfo{padding:10px 14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;font-size:11px;color:#1565C0;margin-bottom:10px}
+.stsuccess{padding:10px 14px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;font-size:11px;color:#166534;margin-bottom:10px}
+
+/* ── Progress bar ── */
+.progress-wrap{background:#E5E7EB;border-radius:3px;height:5px;margin:6px 0}
+.progress-bar{height:100%;border-radius:3px;transition:width .4s}
+
+/* ── ADL Matrix ── */
+.adl-table{border-collapse:collapse;width:100%}
+.adl-table th,.adl-table td{border:1px solid #D1D5DB;padding:6px 8px;vertical-align:top}
+.adl-table thead th{background:#F0FDF4;color:#166534;font-size:10px;font-weight:700;text-align:center}
+.adl-table tbody td:first-child{background:#FAF5FF;color:#6B21A8;font-size:10px;font-weight:700;text-align:right;white-space:nowrap}
+.adl-cell{min-height:60px;font-size:8.5px;color:#D1D5DB;line-height:1.4}
+.adl-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.adl-tag{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;cursor:default}
+
+/* ── Chart placeholder ── */
+.chart-box{width:100%;min-height:280px}
+.chart-box.sm{min-height:200px}
+.chart-box.xs{min-height:140px}
+
+/* ── Covenant gauge ── */
+.cov-card{background:#F9FAFB;border:1px solid #D1D5DB;border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.cov-card.breach{border-color:#FCA5A5;background:#FEF2F2}
+
+/* ── Sankey placeholder note ── */
+.sankey-note{font-size:10px;color:#6B7280;margin-top:6px;font-style:italic}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR  →  st.sidebar
+     ═══════════════════════════════════════════════ -->
+<div id="sidebar">
+  <div class="sidebar-logo">◈ GELEX · CASHPLAN</div>
+
+  <div class="sidebar-section">Điều hướng</div>
+  <div class="nav-item active" onclick="navigate(0)"><span class="nav-icon">🏠</span>Tổng quan</div>
+  <div class="nav-item" onclick="navigate(1)"><span class="nav-icon">📋</span>Theo dõi dữ liệu</div>
+  <div class="nav-item" onclick="navigate(2)"><span class="nav-icon">📊</span>Dashboard chiến lược</div>
+  <div class="nav-item" onclick="navigate(3)"><span class="nav-icon">🔍</span>Chi tiết CTTV</div>
+  <div class="nav-item" onclick="navigate(4)"><span class="nav-icon">🎯</span>Ma trận ADL</div>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">Bộ lọc toàn cục</div>
+
+  <!-- st.sidebar.multiselect("Năm") -->
+  <div class="sidebar-filter">
+    <label>Năm</label>
+    <div class="check-group" id="year-checks">
+      <label><input type="checkbox" value="2026" checked onchange="applyFilters()"> 2026</label>
+      <label><input type="checkbox" value="2027" onchange="applyFilters()"> 2027</label>
+      <label><input type="checkbox" value="2028" onchange="applyFilters()"> 2028</label>
+      <label><input type="checkbox" value="2029" onchange="applyFilters()"> 2029</label>
+      <label><input type="checkbox" value="2030" onchange="applyFilters()"> 2030</label>
+    </div>
+  </div>
+
+  <!-- st.sidebar.multiselect("Quý") -->
+  <div class="sidebar-filter">
+    <label>Quý</label>
+    <div class="check-group" id="quy-checks">
+      <label><input type="checkbox" value="Q1" checked onchange="applyFilters()"> Q1</label>
+      <label><input type="checkbox" value="Q2" checked onchange="applyFilters()"> Q2</label>
+      <label><input type="checkbox" value="Q3" checked onchange="applyFilters()"> Q3</label>
+      <label><input type="checkbox" value="Q4" checked onchange="applyFilters()"> Q4</label>
+    </div>
+  </div>
+
+  <!-- st.sidebar.selectbox("Nhóm") -->
+  <div class="sidebar-filter">
+    <label>Nhóm đơn vị</label>
+    <select id="group-select" onchange="applyFilters()" style="width:100%;margin-top:4px">
+      <option value="All">Tất cả</option>
+      <option value="GEE">GEE Group</option>
+      <option value="GEL">GEL Group</option>
+    </select>
+  </div>
+
+  <div class="sidebar-divider"></div>
+  <div style="padding:10px 18px;font-size:10px;color:#9CA3AF">
+    v4 · Schema đúng Excel<br>10 CTTV · Đơn vị: triệu VNĐ<br>Demo data
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN
+     ═══════════════════════════════════════════════ -->
+<div id="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Tổng quan</div>
+      <div class="topbar-sub" id="page-sub">Gelex Group · Kế hoạch dòng tiền 2026–2030 · Đơn vị: triệu VNĐ</div>
+    </div>
+    <div style="font-size:10px;color:#6B7280">Sheet Report · Key drivers · Ratio_commit</div>
+  </div>
+  <div class="content">
+
+    <!-- ══════════════════════════════════
+         PAGE 0 — TỔNG QUAN
+         ══════════════════════════════════ -->
+    <div class="page active" id="page-0">
+      <!-- st.metric() row -->
+      <div class="metric-row" id="p0-metrics"></div>
+
+      <!-- st.warning / error -->
+      <div id="p0-alerts"></div>
+
+      <!-- st.columns(4) — nav cards -->
+      <div class="cols4" id="p0-navcards">
+        <div class="stcard" style="cursor:pointer;border-left:3px solid #1565C0" onclick="navigate(1)">
+          <div class="stcard-title">📋 P2. Theo dõi dữ liệu</div>
+          <div class="stcard-sub">Trạng thái upload file từ CTTV</div>
+        </div>
+        <div class="stcard" style="cursor:pointer;border-left:3px solid #1565C0" onclick="navigate(2)">
+          <div class="stcard-title">📊 P3. Dashboard chiến lược</div>
+          <div class="stcard-sub">Sankey · Heatmap · Tích lũy</div>
+        </div>
+        <div class="stcard" style="cursor:pointer;border-left:3px solid #6B21A8" onclick="navigate(3)">
+          <div class="stcard-title">🔍 P4. Chi tiết CTTV</div>
+          <div class="stcard-sub">Key drivers · Ratio_commit</div>
+        </div>
+        <div class="stcard" style="cursor:pointer;border-left:3px solid #166534" onclick="navigate(4)">
+          <div class="stcard-title">🎯 P5. Ma trận ADL</div>
+          <div class="stcard-sub">Vị thế ngành · Phân bổ vốn</div>
+        </div>
+      </div>
+
+      <!-- st.plotly_chart — overview bar -->
+      <div class="stcard">
+        <div class="stcard-title">Lưu chuyển tiền thuần tổng hợp — Tất cả CTTV</div>
+        <div class="stcard-sub">Tổng Số tiền tổng theo Khoản mục (CFO / CFI / CFF) · Quý</div>
+        <div class="chart-box" id="chart-p0-overview"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         PAGE 1 — THEO DÕI DỮ LIỆU
+         ══════════════════════════════════ -->
+    <div class="page" id="page-1">
+      <div class="metric-row" id="p1-metrics"></div>
+      <!-- st.columns(2) — progress per group -->
+      <div class="cols2" id="p1-progress"></div>
+      <!-- st.dataframe() -->
+      <div class="stcard">
+        <div class="stcard-title">Chi tiết trạng thái nộp file</div>
+        <div class="stcard-sub">3 sheet cần upload: Report · Key drivers · Ratio_commit</div>
+        <div style="overflow-x:auto"><table class="sttable" id="tracker-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         PAGE 2 — DASHBOARD CHIẾN LƯỢC
+         ══════════════════════════════════ -->
+    <div class="page" id="page-2">
+      <div class="metric-row" id="p2-metrics"></div>
+
+      <!-- st.tabs() -->
+      <div class="stabs">
+        <button class="stab active" onclick="setTab2(0,this)">Sankey nội bộ (CF36)</button>
+        <button class="stab" onclick="setTab2(1,this)">Heatmap Net CF</button>
+        <button class="stab" onclick="setTab2(2,this)">Tích lũy dư tiền</button>
+      </div>
+
+      <!-- Tab 0: Sankey -->
+      <div id="tab2-0" class="stcard">
+        <div class="stcard-title">Sankey — Luân chuyển dòng tiền nội bộ (CF36 Bên trong)</div>
+        <div class="stcard-sub">CTTV → Sub-Holding → Tập đoàn · Band width ∝ |Số tiền tổng| · Nguồn: Phân loại Bên trong và bên ngoài = "Bên trong"</div>
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label>Kỳ — Năm</label>
+            <select id="sankey-nam" onchange="renderSankey()">
+              <option>2026</option><option>2027</option><option>2028</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Quý</label>
+            <div class="btn-group">
+              <button class="btn" onclick="setSankeyQuy('Q1',this)">Q1</button>
+              <button class="btn active" onclick="setSankeyQuy('Q2',this)">Q2</button>
+              <button class="btn" onclick="setSankeyQuy('Q3',this)">Q3</button>
+              <button class="btn" onclick="setSankeyQuy('Q4',this)">Q4</button>
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>Loại giao dịch</label>
+            <select id="sankey-type" onchange="renderSankey()">
+              <option value="all">Tất cả</option>
+              <option value="CF36">CF36 — Cổ tức</option>
+              <option value="CF23">CF23 — Cho vay</option>
+              <option value="CF24">CF24 — Thu hồi vay</option>
+            </select>
+          </div>
+          <div style="width:1px;height:28px;background:#D1D5DB;align-self:flex-end"></div>
+          <div class="filter-item">
+            <label>Phân loại ổn định ▼</label>
+            <div class="btn-group" id="sankey-od-filter">
+              <button class="btn active" onclick="setSankeyFilter('od','all',this)">Tất cả</button>
+              <button class="btn" onclick="setSankeyFilter('od','stable',this)" style="color:#166534;border-color:#86EFAC">Ổn định</button>
+              <button class="btn" onclick="setSankeyFilter('od','unstable',this)" style="color:#991B1B;border-color:#FCA5A5">Không ổn định</button>
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>Phân loại nội/ngoại ▼</label>
+            <div class="btn-group" id="sankey-nb-filter">
+              <button class="btn active" onclick="setSankeyFilter('nb','all',this)">Tất cả</button>
+              <button class="btn" onclick="setSankeyFilter('nb','internal',this)" style="color:#4527A0;border-color:#C4B5FD">Bên trong</button>
+              <button class="btn" onclick="setSankeyFilter('nb','external',this)" style="color:#374151;border-color:#9CA3AF">Bên ngoài</button>
+            </div>
+          </div>
+        </div>
+        <div id="sankey-filter-badge" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div id="sankey-filter-badge" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div class="chart-box" id="chart-sankey"></div>
+        <div class="sankey-note">* Sankey đọc từ cột "Phân loại Bên trong và bên ngoài" và "Đối tượng giao dịch kinh tế" trong Sheet Report</div>
+      </div>
+
+      <!-- Tab 1: Heatmap -->
+      <div id="tab2-1" class="stcard" style="display:none">
+        <div class="stcard-title">Heatmap — Lưu chuyển tiền thuần theo Mã đơn vị và kỳ</div>
+        <div class="stcard-sub">Xanh = dương · Đỏ = âm · Lọc theo phân loại ổn định và nội/ngoại</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:10px 0 12px">
+          <div class="filter-item">
+            <label>Phân loại ổn định</label>
+            <div class="btn-group" id="heatmap-od-filter">
+              <button class="btn active" onclick="setHeatmapFilter('od','all',this)">Tất cả</button>
+              <button class="btn" onclick="setHeatmapFilter('od','stable',this)" style="color:#166534;border-color:#86EFAC">Ổn định</button>
+              <button class="btn" onclick="setHeatmapFilter('od','unstable',this)" style="color:#991B1B;border-color:#FCA5A5">Không ổn định</button>
+            </div>
+          </div>
+          <div style="width:1px;height:28px;background:#D1D5DB;align-self:flex-end"></div>
+          <div class="filter-item">
+            <label>Phân loại nội/ngoại</label>
+            <div class="btn-group" id="heatmap-nb-filter">
+              <button class="btn active" onclick="setHeatmapFilter('nb','all',this)">Tất cả</button>
+              <button class="btn" onclick="setHeatmapFilter('nb','internal',this)" style="color:#4527A0;border-color:#C4B5FD">Bên trong</button>
+              <button class="btn" onclick="setHeatmapFilter('nb','external',this)" style="color:#374151;border-color:#9CA3AF">Bên ngoài</button>
+            </div>
+          </div>
+          <div style="width:1px;height:28px;background:#D1D5DB;align-self:flex-end"></div>
+          <div class="filter-item">
+            <label>Khoản mục</label>
+            <div class="btn-group" id="heatmap-km-filter">
+              <button class="btn active" onclick="setHeatmapFilter('km','all',this)">Tất cả</button>
+              <button class="btn" onclick="setHeatmapFilter('km','CFO',this)" style="color:#1565C0;border-color:#93C5FD">CFO</button>
+              <button class="btn" onclick="setHeatmapFilter('km','CFI',this)" style="color:#9A3412;border-color:#FCA5A5">CFI</button>
+              <button class="btn" onclick="setHeatmapFilter('km','CFF',this)" style="color:#6B21A8;border-color:#C4B5FD">CFF</button>
+            </div>
+          </div>
+          <div id="heatmap-active-filters" style="font-size:10px;color:#6B7280;align-self:flex-end;padding-bottom:2px"></div>
+        </div>
+        <div class="chart-box" id="chart-heatmap"></div>
+      </div>
+
+      <!-- Tab 2: Cumulative -->
+      <div id="tab2-2" class="stcard" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          <div>
+            <div class="stcard-title">Tích lũy dư tiền — Kế hoạch phân bổ vốn Tập đoàn</div>
+            <div class="stcard-sub" id="cum-subtitle">Cột = net CF từng kỳ · Đường = tích lũy cộng dồn</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:10px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">Hiển thị:</span>
+            <div class="btn-group" id="cum-mode-btns">
+              <button class="btn active" onclick="setCumMode('total',this)">Tổng hợp</button>
+              <button class="btn" onclick="setCumMode('split',this)">Ổn định / KÔĐ</button>
+              <button class="btn" onclick="setCumMode('stacked',this)">Stacked bar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main chart -->
+        <div class="chart-box" id="chart-cumulative" style="min-height:280px"></div>
+
+        <!-- Stability breakdown section — shown in split/stacked mode -->
+        <div id="cum-breakdown-section" style="display:none;margin-top:20px;border-top:1px solid #E5E7EB;padding-top:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1F2937;margin-bottom:4px">CF Ổn định vs Không ổn định — từng kỳ</div>
+              <div style="font-size:10px;color:#6B7280;margin-bottom:8px">Xanh = Ổn định · Đỏ = Không ổn định · Cột có thể âm</div>
+              <div id="chart-cum-bars" style="min-height:160px"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1F2937;margin-bottom:4px">Tỷ lệ % CF Ổn định theo kỳ</div>
+              <div style="font-size:10px;color:#6B7280;margin-bottom:8px">Đường cam = % ổn định · Ngưỡng 60% (dashed) = mức đáng tin cậy</div>
+              <div id="chart-cum-pct" style="min-height:160px"></div>
+            </div>
+          </div>
+          <!-- Summary strip -->
+          <div id="cum-stability-summary" style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap"></div>
+        </div>
+
+        <div id="p2-surplus-alert"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         PAGE 3 — CHI TIẾT CTTV
+         ══════════════════════════════════ -->
+    <div class="page" id="page-3">
+      <!-- st.selectbox("Mã đơn vị") -->
+      <div class="filter-bar" style="margin-bottom:14px">
+        <div class="filter-item">
+          <label>Mã đơn vị</label>
+          <select id="sub-select" onchange="renderSubPage()" style="min-width:180px">
+            <option>THI</option><option>CADIVI</option><option>CMB</option>
+            <option>MEE</option><option>HEM</option><option>EMIC</option>
+            <option>VGC</option><option>Viwasupco</option><option>PXL</option><option>TITANMP</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Khoản mục (CF detail)</label>
+          <div class="btn-group">
+            <button class="btn active" onclick="setCFTab('CFO',this)">CFO</button>
+            <button class="btn" onclick="setCFTab('CFI',this)">CFI</button>
+            <button class="btn" onclick="setCFTab('CFF',this)">CFF</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="p3-sub-header" style="margin-bottom:12px"></div>
+      <div class="metric-row" id="p3-metrics"></div>
+
+      <div class="cols2">
+        <!-- st.plotly_chart — CF timeline -->
+        <div class="stcard">
+          <div class="stcard-title">Dòng tiền theo thời gian</div>
+          <div class="stcard-sub">Lưu chuyển tiền thuần (cột) & tích lũy (đường)</div>
+          <div class="chart-box sm" id="chart-sub-timeline"></div>
+        </div>
+        <!-- CF36 nội bộ -->
+        <div class="stcard">
+          <div class="stcard-title">CF36 — Cổ tức nội bộ (Bên trong)</div>
+          <div class="stcard-sub">Phân loại Bên trong và bên ngoài = "Bên trong" · Đối tượng giao dịch kinh tế</div>
+          <div id="p3-cf36"></div>
+        </div>
+      </div>
+
+      <!-- Sheet Report detail — st.dataframe() -->
+      <div class="stcard">
+        <div class="stcard-title">Chi tiết chỉ tiêu — Sheet Report</div>
+        <div class="stcard-sub" id="p3-report-sub"></div>
+        <div style="overflow-x:auto"><table class="sttable" id="p3-report-table"></table></div>
+      </div>
+
+      <!-- Sheet Key drivers — st.dataframe() -->
+      <div class="stcard" id="p3-drivers-card">
+        <div class="stcard-title">Key Drivers — Sheet Key drivers</div>
+        <div class="stcard-sub">Cấu phần value chain · Key drivers · Phân loại Ổn định &amp; Không ổn định · Rationale</div>
+        <div style="overflow-x:auto"><table class="sttable" id="p3-drivers-table"></table></div>
+      </div>
+
+      <!-- Sheet Ratio_commit — covenant chart + table -->
+      <div class="stcard" id="p3-covenant-card">
+        <div class="stcard-title">Covenant Tracking — Sheet Ratio_commit</div>
+        <div class="stcard-sub">Giá trị cam kết · Giá trị thực hiện · Status (ok/break) · Cam kết với bank nào</div>
+        <div class="stabs" id="cov-tabs" style="margin-bottom:10px"></div>
+        <div id="chart-covenant" class="chart-box sm"></div>
+        <div id="p3-covenant-summary" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         PAGE 4 — MA TRẬN ADL
+         ══════════════════════════════════ -->
+    <div class="page" id="page-4">
+      <div class="stabs">
+        <button class="stab active" onclick="setTab4(0,this)">Ma trận</button>
+        <button class="stab" onclick="setTab4(1,this)">Bảng tổng hợp</button>
+        <button class="stab" onclick="setTab4(2,this)">Phân bổ vốn</button>
+      </div>
+
+      <!-- Tab 0: Matrix -->
+      <div id="tab4-0">
+        <div class="stinfo" style="margin-bottom:12px">
+          💡 <b>Hướng dẫn:</b> Vị thế mỗi CTTV được phân tích dựa trên value chain và key drivers từ Sheet Key drivers. Nhóm màu: <span style="color:#1565C0">■ GEE</span> · <span style="color:#6A1B9A">■ GEL</span>
+        </div>
+        <div class="stcard" style="overflow-x:auto">
+          <table class="adl-table" id="adl-matrix-table"></table>
+        </div>
+      </div>
+
+      <!-- Tab 1: Summary table -->
+      <div id="tab4-1" style="display:none">
+        <div class="stcard">
+          <div class="stcard-title">Bảng tổng hợp vị thế ADL</div>
+          <div class="stcard-sub">Chiến lược gợi ý · Hàm ý dòng tiền · Khuyến nghị cổ tức</div>
+          <div style="overflow-x:auto"><table class="sttable" id="adl-summary-table"></table></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Capital allocation -->
+      <div id="tab4-2" style="display:none">
+        <div class="cols2">
+          <div class="stcard">
+            <div class="stcard-title">🟢 Nguồn tiền — Mature / Ageing</div>
+            <div class="stcard-sub">CTTV tạo ra dòng tiền → nguồn phân bổ vốn Tập đoàn</div>
+            <div id="adl-generators"></div>
+          </div>
+          <div class="stcard">
+            <div class="stcard-title">🔴 Tiêu thụ vốn — Embryonic / Growth</div>
+            <div class="stcard-sub">CTTV cần vốn đầu tư → nhận phân bổ từ Tập đoàn</div>
+            <div id="adl-consumers"></div>
+          </div>
+        </div>
+        <div class="stcard">
+          <div class="stcard-title">Khuyến nghị chính sách cổ tức theo vị thế ADL</div>
+          <div class="stcard-sub">Dựa trên Industry Lifecycle × Competition Position</div>
+          <div style="overflow-x:auto"><table class="sttable" id="adl-dividend-table"></table></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════════════════════
+     DATA & LOGIC  (Python equivalent in comments)
+     ═══════════════════════════════════════════════ -->
+<script>
+// ── MASTER DATA ──────────────────────────────────────────────────────────────
+// Equivalent to: pd.read_excel("template.xlsm", sheet_name="DS_CTTV")
+const ENTITIES = [
+  {ma:"THI",    ten:"Công ty Cổ phần Thiết bị Điện",             group:"GEE", phanCap:"3. CTTV"},
+  {ma:"CADIVI", ten:"Công ty Cổ phần Dây Cáp Điện Việt Nam",      group:"GEE", phanCap:"3. CTTV"},
+  {ma:"CMB",    ten:"Công ty TNHH MTV Cadivi Miền Bắc",           group:"GEE", phanCap:"3. CTTV"},
+  {ma:"MEE",    ten:"Công ty Cổ phần Sản xuất TB điện Đông Anh",  group:"GEE", phanCap:"3. CTTV"},
+  {ma:"HEM",    ten:"Công ty Cổ phần Chế tạo Điện Cơ Hà Nội",    group:"GEE", phanCap:"3. CTTV"},
+  {ma:"EMIC",   ten:"Công ty Cổ phần Thiết bị đo điện EMIC",      group:"GEE", phanCap:"3. CTTV"},
+  {ma:"VGC",    ten:"Tổng Công ty Viglacera – CTCP",              group:"GEL", phanCap:"3. CTTV"},
+  {ma:"Viwasupco",ten:"Công ty Cổ phần Đầu tư Nước sạch Sông Đà",group:"GEL", phanCap:"3. CTTV"},
+  {ma:"PXL",    ten:"Công ty Cổ phần Đầu tư KCN Dầu khí Long Sơn",group:"GEL",phanCap:"3. CTTV"},
+  {ma:"TITANMP",ten:"Công ty Cổ phần Titan Hải Phòng",            group:"GEL", phanCap:"3. CTTV"},
+];
+const YEARS=[2026,2027,2028,2029,2030], QUARTERS=["Q1","Q2","Q3","Q4"];
+const GC={GEE:"#1565C0",GEL:"#6A1B9A",GELEX:"#92400E"};
+
+// Sheet: Report — exact column names
+// Code | Phân cấp đơn vị | Mã đơn vị | Tên đơn vị | Khoản mục | Chỉ tiêu |
+// Năm | Quý | Số tiền tổng | Nguồn thông tin |
+// Phân loại ổn định và không ổn định | Phân loại Bên trong và bên ngoài | Đối tượng giao dịch kinh tế
+
+function makeRows(ma,phanCap,ten,group,tpl){
+  const rows=[];
+  YEARS.forEach((nam,yi)=>{
+    QUARTERS.forEach((quy,qi)=>{
+      const g=Math.pow(1.05,yi), s=qi===1?0.85:qi===3?1.12:1.0;
+      tpl.forEach(t=>{
+        const val=Math.round(t.base*s*g*(1+(Math.random()-.5)*0.08));
+        rows.push({
+          "Code":t.code,
+          "Phân cấp đơn vị":phanCap,
+          "Mã đơn vị":ma,
+          "Tên đơn vị":ten,
+          "Khoản mục":t.km,
+          "Chỉ tiêu":t.ct,
+          "Năm":nam,
+          "Quý":quy,
+          "Số tiền tổng":val,
+          "Nguồn thông tin":"",
+          "Phân loại ổn định và không ổn định":t.od,
+          "Phân loại Bên trong và bên ngoài":t.nb,
+          "Đối tượng giao dịch kinh tế":t.dt||""
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+// THI — real Q1-Q4 2026 data from xlsm, mock for 2027-2030
+const THI_REAL_2026=[
+  // Net CF mục tiêu: Q1≈+55B, Q2≈+42B, Q3≈+38B, Q4≈+48B → cumulative dương rõ
+  {code:"CF01.S.E",km:"CFO",ct:"1. Lợi nhuận trước thuế",od:"Ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:39362,Q2:35492,Q3:38649,Q4:37680}},
+  {code:"CF01.U.E",km:"CFO",ct:"1. Lợi nhuận trước thuế",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:9146,Q2:8246,Q3:8980,Q4:8755}},
+  {code:"CF02.U.E",km:"CFO",ct:"- Khấu hao TSCĐ và BĐSĐT",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:10520,Q2:14427,Q3:13837,Q4:13157}},
+  {code:"CF09.S.E",km:"CFO",ct:"- Tăng, giảm các khoản phải thu",od:"Ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:12000,Q2:10757,Q3:8500,Q4:6000}},
+  {code:"CF10.S.E",km:"CFO",ct:"- Tăng, giảm hàng tồn kho",od:"Ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:8000,Q2:12000,Q3:5000,Q4:9000}},
+  {code:"CF11.S.E",km:"CFO",ct:"- Tăng, giảm các khoản phải trả",od:"Ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:15000,Q2:18000,Q3:10000,Q4:14000}},
+  {code:"CF15.S.E",km:"CFO",ct:"- Thuế thu nhập doanh nghiệp đã nộp",od:"Ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:-9800,Q2:-8748,Q3:-9826,Q4:-9400}},
+  {code:"CF21.U.E",km:"CFI",ct:"1. Tiền chi mua sắm, xây dựng TSCĐ và tài sản dài hạn khác",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:-8000,Q2:-18000,Q3:-5409,Q4:-12800}},
+  {code:"CF24.U.E",km:"CFI",ct:"4. Tiền thu hồi cho vay, bán lại công cụ nợ của đơn vị khác",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:5000,Q2:3000,Q3:2000,Q4:4000}},
+  {code:"CF27.U.E",km:"CFI",ct:"7. Tiền thu lãi cho vay, cổ tức và lợi nhuận được chia",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:1490,Q2:1200,Q3:1100,Q4:1300}},
+  {code:"CF33.U.E",km:"CFF",ct:"3. Tiền thu từ đi vay",od:"Không ổn định",nb:"Bên ngoài",dt:"",perQ:{Q1:35000,Q2:28000,Q3:22000,Q4:30000}},
+  {code:"CF34.U.E",km:"CFF",ct:"4. Tiền trả nợ gốc vay",od:"Không ổn định",nb:"Bên ngoài",dt:"GEE",perQ:{Q1:-28000,Q2:-22000,Q3:-18000,Q4:-24000}},
+  {code:"CF36.S.I",km:"CFF",ct:"6. Cổ tức, lợi nhuận đã trả cho chủ sở hữu",od:"Ổn định",nb:"Bên trong",dt:"GEE",perQ:{Q1:0,Q2:-18000,Q3:0,Q4:-12000}},
+];
+
+// Build Report rows for THI (real 2026 + extrapolated)
+const THI_ROWS=[];
+THI_REAL_2026.forEach(t=>{
+  YEARS.forEach((nam,yi)=>{
+    QUARTERS.forEach(quy=>{
+      const val=yi===0 ? t.perQ[quy] : Math.round(t.perQ[quy]*Math.pow(1.04,yi)*(1+(Math.random()-.5)*0.05));
+      THI_ROWS.push({"Code":t.code,"Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Khoản mục":t.km,"Chỉ tiêu":t.ct,"Năm":nam,"Quý":quy,"Số tiền tổng":val,"Nguồn thông tin":"","Phân loại ổn định và không ổn định":t.od,"Phân loại Bên trong và bên ngoài":t.nb,"Đối tượng giao dịch kinh tế":t.dt});
+    });
+  });
+});
+
+const tplCADIVI=[
+  {code:"CF01.S.E",km:"CFO",ct:"1. Lợi nhuận trước thuế",od:"Ổn định",nb:"Bên ngoài",dt:"",base:68000},
+  {code:"CF02.U.E",km:"CFO",ct:"- Khấu hao TSCĐ và BĐSĐT",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:12000},
+  {code:"CF09.S.E",km:"CFO",ct:"- Tăng, giảm các khoản phải thu",od:"Ổn định",nb:"Bên ngoài",dt:"",base:8000},
+  {code:"CF10.S.E",km:"CFO",ct:"- Tăng, giảm hàng tồn kho",od:"Ổn định",nb:"Bên ngoài",dt:"",base:6000},
+  {code:"CF11.S.E",km:"CFO",ct:"- Tăng, giảm các khoản phải trả",od:"Ổn định",nb:"Bên ngoài",dt:"",base:7000},
+  {code:"CF15.S.E",km:"CFO",ct:"- Thuế thu nhập doanh nghiệp đã nộp",od:"Ổn định",nb:"Bên ngoài",dt:"",base:-15000},
+  {code:"CF21.U.E",km:"CFI",ct:"1. Tiền chi mua sắm, xây dựng TSCĐ và tài sản dài hạn khác",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:-22000},
+  {code:"CF27.U.E",km:"CFI",ct:"7. Tiền thu lãi cho vay, cổ tức và lợi nhuận được chia",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:2000},
+  {code:"CF33.U.E",km:"CFF",ct:"3. Tiền thu từ đi vay",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:30000},
+  {code:"CF34.U.E",km:"CFF",ct:"4. Tiền trả nợ gốc vay",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:-24000},
+  {code:"CF36.S.I",km:"CFF",ct:"6. Cổ tức, lợi nhuận đã trả cho chủ sở hữu",od:"Ổn định",nb:"Bên trong",dt:"GEE",base:-19000},
+];
+const makeSimple=(ma,ten,grp,lntt,pt,htk,thue,capex,vay,tragoc,cotuc)=>[
+  {code:"CF01.S.E",km:"CFO",ct:"1. Lợi nhuận trước thuế",od:"Ổn định",nb:"Bên ngoài",dt:"",base:lntt},
+  {code:"CF09.S.E",km:"CFO",ct:"- Tăng, giảm các khoản phải thu",od:"Ổn định",nb:"Bên ngoài",dt:"",base:pt},
+  {code:"CF10.S.E",km:"CFO",ct:"- Tăng, giảm hàng tồn kho",od:"Ổn định",nb:"Bên ngoài",dt:"",base:htk},
+  {code:"CF15.S.E",km:"CFO",ct:"- Thuế thu nhập doanh nghiệp đã nộp",od:"Ổn định",nb:"Bên ngoài",dt:"",base:thue},
+  {code:"CF21.U.E",km:"CFI",ct:"1. Tiền chi mua sắm, xây dựng TSCĐ và tài sản dài hạn khác",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:capex},
+  {code:"CF33.U.E",km:"CFF",ct:"3. Tiền thu từ đi vay",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:vay},
+  {code:"CF34.U.E",km:"CFF",ct:"4. Tiền trả nợ gốc vay",od:"Không ổn định",nb:"Bên ngoài",dt:"",base:tragoc},
+  {code:"CF36.S.I",km:"CFF",ct:"6. Cổ tức, lợi nhuận đã trả cho chủ sở hữu",od:"Ổn định",nb:"Bên trong",dt:grp,base:cotuc},
+];
+
+const REPORT_ROWS=[
+  ...THI_ROWS,
+  ...makeRows("CADIVI","3. CTTV","Công ty Cổ phần Dây Cáp Điện Việt Nam","GEE",tplCADIVI),
+  ...makeRows("CMB",   "3. CTTV","Công ty TNHH MTV Cadivi Miền Bắc","GEE",     makeSimple("CMB","","GEE",22000,5000,4000,-5000,-6000,15000,-12000,-8000)),
+  ...makeRows("MEE",   "3. CTTV","Công ty Cổ phần Sản xuất TB điện Đông Anh","GEE",makeSimple("MEE","","GEE",16000,3000,3000,-3500,-5000,12000,-10000,-5000)),
+  ...makeRows("HEM",   "3. CTTV","Công ty Cổ phần Chế tạo Điện Cơ Hà Nội","GEE",makeSimple("HEM","","GEE",10000,2000,2000,-2200,-3500,8000,-7000,-3000)),
+  ...makeRows("EMIC",  "3. CTTV","Công ty Cổ phần Thiết bị đo điện EMIC","GEE",  makeSimple("EMIC","","GEE",7000,1500,1500,-1600,-2000,6000,-5000,-2000)),
+  ...makeRows("VGC",   "3. CTTV","Tổng Công ty Viglacera – CTCP","GEL",          makeSimple("VGC","","GEL",120000,20000,18000,-28000,-40000,50000,-38000,-35000)),
+  ...makeRows("Viwasupco","3. CTTV","Công ty Cổ phần Đầu tư Nước sạch Sông Đà","GEL",makeSimple("Viwasupco","","GEL",35000,8000,6000,-8000,-15000,20000,-16000,-12000)),
+  ...makeRows("PXL",   "3. CTTV","Công ty Cổ phần Đầu tư KCN Dầu khí Long Sơn","GEL",makeSimple("PXL","","GEL",8000,-2000,1000,-1800,-12000,18000,-14000,0)),
+  ...makeRows("TITANMP","3. CTTV","Công ty Cổ phần Titan Hải Phòng","GEL",        makeSimple("TITANMP","","GEL",6000,1000,1000,-1400,-2500,6000,-5000,-1500)),
+];
+
+// Sheet: Key drivers — exact columns
+const KEY_DRIVER_ROWS=[
+  {Group:"CFO",Code:"CF01.S.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Marketing & Sales","Key drivers":"Thị phần","Phân loại Ổn định & Không ổn định":"Ổn định","Rationale ổn định or không ổn định":"Phần LNTT từ mảng đại lý, dự án và xuất khẩu — thị trường ổn định"},
+  {Group:"CFO",Code:"CF01.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Marketing & Sales","Key drivers":"Giá bán","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Do mức độ cạnh tranh của thị trường thầu"},
+  {Group:"CFO",Code:"CF02.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"- Khấu hao TSCĐ và BĐSĐT","Cấu phần value chain":"Operations","Key drivers":"Đầu tư mở rộng","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Đơn vị có KH đầu tư mới TSCĐ từ 2026 tới 2028"},
+  {Group:"CFO",Code:"CF06.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"- Chi phí đi vay","Cấu phần value chain":"Firm Infrastructure","Key drivers":"Vòng quay các khoản phải thu","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Data các năm tương đối ổn định"},
+  {Group:"CFO",Code:"CF09.S.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"- Tăng, giảm các khoản phải thu","Cấu phần value chain":"","Key drivers":"","Phân loại Ổn định & Không ổn định":"Ổn định","Rationale ổn định or không ổn định":""},
+  {Group:"CFF",Code:"CF34.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"4. Tiền trả nợ gốc vay","Cấu phần value chain":"Firm Infrastructure","Key drivers":"Debt schedule","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":""},
+  {Group:"CFF",Code:"CF36.S.I","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"THI","Tên đơn vị":"Công ty Cổ phần Thiết bị Điện","Chỉ tiêu":"6. Cổ tức, lợi nhuận đã trả cho chủ sở hữu","Cấu phần value chain":"Firm Infrastructure","Key drivers":"Dividend policy","Phân loại Ổn định & Không ổn định":"Ổn định","Rationale ổn định or không ổn định":"Chính sách cổ tức do Tập đoàn set-up"},
+  {Group:"CFO",Code:"CF01.S.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"CADIVI","Tên đơn vị":"Công ty Cổ phần Dây Cáp Điện Việt Nam","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Marketing & Sales","Key drivers":"Sản lượng dây cáp, hợp đồng EVN","Phân loại Ổn định & Không ổn định":"Ổn định","Rationale ổn định or không ổn định":"Hợp đồng dài hạn với EVN chiếm 60% doanh thu"},
+  {Group:"CFO",Code:"CF01.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"CADIVI","Tên đơn vị":"Công ty Cổ phần Dây Cáp Điện Việt Nam","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Operations","Key drivers":"Giá đồng, nhôm (LME)","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Biến động giá nguyên liệu quốc tế ảnh hưởng trực tiếp biên LN"},
+  {Group:"CFO",Code:"CF01.S.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"VGC","Tên đơn vị":"Tổng Công ty Viglacera – CTCP","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Marketing & Sales","Key drivers":"Tỷ lệ lấp đầy KCN, FDI inflow","Phân loại Ổn định & Không ổn định":"Ổn định","Rationale ổn định or không ổn định":"Doanh thu KCN ổn định nhờ nhu cầu FDI cao"},
+  {Group:"CFO",Code:"CF01.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"VGC","Tên đơn vị":"Tổng Công ty Viglacera – CTCP","Chỉ tiêu":"1. Lợi nhuận trước thuế","Cấu phần value chain":"Marketing & Sales","Key drivers":"Thị trường VLXD, chu kỳ BĐS","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Mảng VLXD phụ thuộc chu kỳ bất động sản"},
+  {Group:"CFI",Code:"CF21.U.E","Phân cấp đơn vị":"3. CTTV","Mã đơn vị":"PXL","Tên đơn vị":"Công ty Cổ phần Đầu tư KCN Dầu khí Long Sơn","Chỉ tiêu":"1. Tiền chi mua sắm, xây dựng TSCĐ và tài sản dài hạn khác","Cấu phần value chain":"Operations","Key drivers":"Tiến độ pháp lý, hạ tầng khu vực","Phân loại Ổn định & Không ổn định":"Không ổn định","Rationale ổn định or không ổn định":"Phụ thuộc tiến độ giải phóng mặt bằng"},
+];
+
+// Sheet: Ratio_commit — exact columns
+function makeRatioRows(ma,phanCap,ten,ratios){
+  const rows=[];
+  ratios.forEach(r=>{
+    YEARS.forEach(nam=>{
+      QUARTERS.forEach((quy,qi)=>{
+        const yi=YEARS.indexOf(nam);
+        const val=r.trend(yi,qi);
+        rows.push({
+          "Phân cấp đơn vị":phanCap,"Mã đơn vị":ma,"Tên đơn vị":ten,
+          "Chỉ tiêu cam kết":r.chiTieu,"Công thức":r.chiTieu,
+          "Giá trị cam kết":r.camKet,"Năm":nam,"Quý":quy,
+          "Giá trị thực hiện":val,
+          "Status (ok/ break)":r.isLT ? (val<parseFloat(r.camKet.replace(/[<>]/,""))?"ok":"break") : (val>parseFloat(r.camKet.replace(/[<>]/,""))?"ok":"break"),
+          "Cam kết với bank nào":r.bank,"Mã khoản vay liên quan":r.maVay,
+          "Giá trị Hạn mức tín dụng":r.hmtd,"Giá trị dư nợ hiện tại":r.duNo,
+          "Thời gian bắt đầu":r.batDau,"Thời gian đáo hạn":r.daoHan,"Ghi chú":"","Dẫn chứng tài liệu":""
+        });
+      });
+    });
+  });
+  return rows;
+}
+const RATIO_ROWS=[
+  ...makeRatioRows("THI","3. CTTV","Công ty Cổ phần Thiết bị Điện",[
+    {chiTieu:"Debt/ Equity",camKet:"<0.7",bank:"Vietcombank",maVay:"LD001",hmtd:500,duNo:310,batDau:"2024-01-01",daoHan:"2027-12-31",isLT:true,
+     trend:(yi,qi)=>+Math.max(0.20,0.30-yi*0.04-qi*0.01).toFixed(2)},
+    {chiTieu:"EBITDA/ Debt",camKet:">2",bank:"Vietcombank",maVay:"LD001",hmtd:500,duNo:310,batDau:"2024-01-01",daoHan:"2027-12-31",isLT:false,
+     trend:(yi,qi)=>+Math.min(3.5,0.20+yi*0.55+qi*0.15).toFixed(2)},
+  ]),
+  ...makeRatioRows("CADIVI","3. CTTV","Công ty Cổ phần Dây Cáp Điện Việt Nam",[
+    {chiTieu:"Debt/ Equity",camKet:"<0.8",bank:"BIDV",maVay:"LD002",hmtd:800,duNo:520,batDau:"2023-06-01",daoHan:"2026-06-30",isLT:true,
+     trend:(yi,qi)=>+Math.max(0.40,0.65-yi*0.06).toFixed(2)},
+    {chiTieu:"EBITDA/ Debt",camKet:">1.5",bank:"BIDV",maVay:"LD002",hmtd:800,duNo:520,batDau:"2023-06-01",daoHan:"2026-06-30",isLT:false,
+     trend:(yi,qi)=>+(2.10+yi*0.15+qi*0.05).toFixed(2)},
+  ]),
+  ...makeRatioRows("VGC","3. CTTV","Tổng Công ty Viglacera – CTCP",[
+    {chiTieu:"Net Debt/ EBITDA",camKet:"<3.5",bank:"MB Bank",maVay:"LD003",hmtd:1200,duNo:850,batDau:"2025-01-01",daoHan:"2028-12-31",isLT:true,
+     trend:(yi,qi)=>+Math.max(2.0,3.20-yi*0.30-qi*0.05).toFixed(2)},
+  ]),
+  ...makeRatioRows("PXL","3. CTTV","Công ty Cổ phần Đầu tư KCN Dầu khí Long Sơn",[
+    {chiTieu:"Debt/ Equity",camKet:"<1.2",bank:"VPBank",maVay:"LD004",hmtd:300,duNo:210,batDau:"2025-03-01",daoHan:"2028-03-31",isLT:true,
+     trend:(yi,qi)=>+Math.max(0.80,1.45-yi*0.18-qi*0.03).toFixed(2)},
+  ]),
+  ...makeRatioRows("HEM","3. CTTV","Công ty Cổ phần Chế tạo Điện Cơ Hà Nội",[
+    {chiTieu:"DSCR",camKet:">1.2",bank:"Techcombank",maVay:"LD005",hmtd:150,duNo:95,batDau:"2025-06-01",daoHan:"2027-06-30",isLT:false,
+     trend:(yi,qi)=>+Math.min(2.0,0.95+yi*0.35+qi*0.08).toFixed(2)},
+  ]),
+];
+
+// ADL data
+const ADL_INIT={THI:"Strong-Mature",CADIVI:"Dominant-Mature",CMB:"Favourable-Mature",MEE:"Strong-Growth",HEM:"Favourable-Mature",EMIC:"Dominant-Growth",VGC:"Tenable-Ageing",Viwasupco:"Favourable-Mature",PXL:"Tenable-Embryonic",TITANMP:"Tenable-Growth"};
+const ADL_STRAT={"Dominant-Embryonic":"Toàn lực chiếm thị phần.","Dominant-Growth":"Giữ vị thế. Giữ thị phần.","Dominant-Mature":"Giữ vị thế. Tăng trưởng theo ngành.","Dominant-Ageing":"Giữ vị thế. Khai thác dòng tiền.","Strong-Embryonic":"Toàn lực chiếm thị phần.","Strong-Growth":"Cải thiện vị thế. Tăng thị phần.","Strong-Mature":"Giữ vị thế. Tăng trưởng theo ngành.","Strong-Ageing":"Giữ hoặc thu hoạch.","Favourable-Embryonic":"Chọn lọc cải thiện.","Favourable-Growth":"Cải thiện. Tăng thị phần chọn lọc.","Favourable-Mature":"Bảo toàn. Tìm thị ngách.","Favourable-Ageing":"Rút lui chọn lọc.","Tenable-Embryonic":"Chọn lọc củng cố vị thế.","Tenable-Growth":"Tìm thị ngách và bảo vệ.","Tenable-Mature":"Rút lui hoặc tìm thị ngách.","Tenable-Ageing":"Rút lui hoặc từ bỏ.","Weak-Embryonic":"Cải thiện hoặc rút lui.","Weak-Growth":"Tái cơ cấu hoặc từ bỏ.","Weak-Mature":"Tái cơ cấu hoặc rút lui.","Weak-Ageing":"Từ bỏ."};
+const ADL_CASH={"Dominant-Mature":"Tạo ra tiền lớn. Nguồn phân bổ chính.","Dominant-Ageing":"Thu hoạch tối đa. CF dương cao.","Strong-Mature":"Tạo tiền tốt. Cân bằng đầu tư/thu hoạch.","Dominant-Growth":"Cổ tức thấp. Ưu tiên tái đầu tư.","Strong-Growth":"CF có thể âm. Đầu tư đáng kể.","Tenable-Growth":"CF âm. Cần inject vốn Tập đoàn.","Favourable-Mature":"CF dương. Thu hoạch chọn lọc.","Tenable-Embryonic":"CF âm. Đầu tư tối thiểu.","Favourable-Growth":"CF trung tính đến âm nhẹ.","Weak-Ageing":"Dừng đầu tư. Thoái vốn."};
+const ADL_DIV={"Dominant-Mature":"Cổ tức cao, ổn định.","Dominant-Ageing":"Cổ tức tối đa.","Strong-Mature":"Cổ tức ổn định, vừa phải.","Dominant-Growth":"Cổ tức thấp.","Strong-Growth":"Cổ tức thấp đến trung bình.","Tenable-Growth":"Không cổ tức. Cần vốn bổ sung.","Favourable-Mature":"Cổ tức vừa phải.","Tenable-Embryonic":"Không cổ tức."};
+
+// ── FILTER STATE ──────────────────────────────────────────────────────────────
+let selYears=[2026], selQtrs=["Q1","Q2","Q3","Q4"], selGroup="All";
+let currentPage=0, cfTab="CFO", covTabIdx=0, sankeyQuy="Q2";
+
+function getSelYears(){ return [...document.querySelectorAll('#year-checks input:checked')].map(x=>+x.value); }
+function getSelQtrs(){  return [...document.querySelectorAll('#quy-checks input:checked')].map(x=>x.value); }
+function getGroup(){    return document.getElementById('group-select').value; }
+
+function applyFilters(){
+  selYears=getSelYears(); selQtrs=getSelQtrs(); selGroup=getGroup();
+  renderCurrentPage();
+}
+
+// ── DATA HELPERS (equivalent to pandas operations) ────────────────────────────
+const getRows=(ma,nam,quy,km)=>REPORT_ROWS.filter(r=>
+  (!ma||r["Mã đơn vị"]===ma)&&(!nam||r["Năm"]===nam)&&(!quy||r["Quý"]===quy)&&(!km||r["Khoản mục"]===km)
+);
+const getNet=(ma,nam,quy,km=null)=>getRows(ma,nam,quy,km).reduce((s,r)=>s+(r["Số tiền tổng"]||0),0);
+const cttvList=()=>selGroup==="All"?ENTITIES:ENTITIES.filter(e=>e.group===selGroup);
+const fmt=n=>{if(n===null||n===undefined)return"—";const a=Math.abs(n);const s=a>=1e6?(a/1e6).toFixed(1)+"T":a>=1e3?Math.round(a/1e3)+"B":Math.round(a).toLocaleString("vi");return n<0?"-"+s:s;};
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────────
+const PAGE_TITLES=["Tổng quan","Theo dõi dữ liệu","Dashboard chiến lược","Chi tiết CTTV","Ma trận ADL"];
+function navigate(i){
+  currentPage=i;
+  document.querySelectorAll('.page').forEach((p,j)=>p.classList.toggle('active',j===i));
+  document.querySelectorAll('.nav-item').forEach((n,j)=>n.classList.toggle('active',j===i));
+  document.getElementById('page-title').textContent="P"+(i+1)+". "+PAGE_TITLES[i];
+  renderCurrentPage();
+}
+function renderCurrentPage(){
+  if(currentPage===0)renderP0();
+  else if(currentPage===1)renderP1();
+  else if(currentPage===2)renderP2();
+  else if(currentPage===3)renderP3();
+  else if(currentPage===4)renderP4();
+}
+
+// ── st.tabs helpers ────────────────────────────────────────────────────────────
+function setTab2(i,btn){
+  [0,1,2].forEach(j=>{
+    document.getElementById('tab2-'+j).style.display=j===i?'block':'none';
+    document.querySelectorAll('.stabs')[0].querySelectorAll('.stab')[j].classList.toggle('active',j===i);
+  });
+  if(i===0)renderSankey();
+  else if(i===1)renderHeatmap();
+  else renderCumulative();
+}
+function setTab4(i,btn){
+  [0,1,2].forEach(j=>{
+    document.getElementById('tab4-'+j).style.display=j===i?'block':'none';
+    document.querySelectorAll('.stabs')[1].querySelectorAll('.stab')[j].classList.toggle('active',j===i);
+  });
+}
+function setCFTab(km,btn){
+  cfTab=km;
+  document.querySelectorAll('.btn-group .btn').forEach(b=>b.classList.toggle('active',b.textContent===km));
+  renderP3();
+}
+function setSankeyQuy(q,btn){
+  sankeyQuy=q;
+  document.querySelectorAll('#tab2-0 .btn-group .btn').forEach(b=>b.classList.toggle('active',b.textContent===q));
+  renderSankey();
+}
+
+// ── PAGE 0 — TỔNG QUAN ────────────────────────────────────────────────────────
+function renderP0(){
+  const ents=cttvList();
+  const totNet=ents.reduce((s,e)=>s+selYears.reduce((a,y)=>a+selQtrs.reduce((b,q)=>b+getNet(e.ma,y,q),0),0),0);
+  const totDiv=REPORT_ROWS.filter(r=>r["Code"].startsWith("CF36")&&r["Phân loại Bên trong và bên ngoài"]==="Bên trong"&&selYears.includes(r["Năm"])&&selQtrs.includes(r["Quý"])).reduce((s,r)=>s+Math.abs(r["Số tiền tổng"]||0),0);
+  const defCnt=ents.filter(e=>selYears.some(y=>selQtrs.some(q=>getNet(e.ma,y,q)<0))).length;
+  const brkCnt=RATIO_ROWS.filter(r=>selYears.includes(r["Năm"])&&selQtrs.includes(r["Quý"])&&r["Status (ok/ break)"]==="break").length;
+
+  // st.metric()
+  document.getElementById('p0-metrics').innerHTML=`
+    <div class="metric ${totNet>=0?'ok':'fail'}"><div class="m-label">Lưu chuyển tiền thuần tổng hợp</div><div class="m-value ${totNet>=0?'pos':'neg'}">${fmt(totNet)}</div><div class="m-delta">${ents.length} CTTV · ${selYears.join(',')} · ${selQtrs.join(',')}</div></div>
+    <div class="metric"><div class="m-label">CF36 Bên trong (cổ tức nội bộ)</div><div class="m-value" style="color:#166534">${fmt(totDiv)}</div><div class="m-delta">CTTV → SubH → GELEX</div></div>
+    <div class="metric ${defCnt===0?'ok':'fail'}"><div class="m-label">CTTV có dòng tiền âm</div><div class="m-value ${defCnt>0?'neg':'pos'}">${defCnt}</div><div class="m-delta">ít nhất 1 kỳ trong lọc</div></div>
+    <div class="metric ${brkCnt===0?'ok':'fail'}"><div class="m-label">Covenant — Status: break</div><div class="m-value ${brkCnt>0?'neg':'pos'}">${brkCnt}</div><div class="m-delta">Sheet Ratio_commit</div></div>
+  `;
+
+  // Overview stacked bar — st.plotly_chart()
+  const periods=selYears.flatMap(y=>selQtrs.map(q=>`${y}-${q}`));
+  const cfoCtr=[], cfiCtr=[], cffCtr=[];
+  periods.forEach(p=>{
+    const [y,q]=p.split('-');
+    cfoCtr.push(ents.reduce((s,e)=>s+getNet(e.ma,+y,q,'CFO'),0));
+    cfiCtr.push(ents.reduce((s,e)=>s+getNet(e.ma,+y,q,'CFI'),0));
+    cffCtr.push(ents.reduce((s,e)=>s+getNet(e.ma,+y,q,'CFF'),0));
+  });
+  Plotly.newPlot('chart-p0-overview',[
+    {name:'CFO — Hoạt động KD',x:periods,y:cfoCtr,type:'bar',marker:{color:'#1565C0'},opacity:.85},
+    {name:'CFI — Hoạt động ĐT',x:periods,y:cfiCtr,type:'bar',marker:{color:'#9A3412'},opacity:.85},
+    {name:'CFF — Hoạt động TC',x:periods,y:cffCtr,type:'bar',marker:{color:'#6B21A8'},opacity:.85},
+  ],{barmode:'group',height:260,margin:{t:10,b:40,l:60,r:10},
+     legend:{orientation:'h',y:-0.25},
+     yaxis:{title:'Triệu VNĐ',tickfont:{size:10}},
+     xaxis:{tickfont:{size:9}},
+     paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+     font:{family:'Arial'}},{responsive:true});
+}
+
+// ── PAGE 1 — TRACKER ──────────────────────────────────────────────────────────
+const TRACKER_DATA=ENTITIES.map(e=>({
+  ...e,
+  report:true,
+  keyDrivers:["THI","CADIVI","VGC","MEE"].includes(e.ma),
+  ratioCommit:["THI","CADIVI","VGC","PXL","HEM"].includes(e.ma),
+  lastUpdate:`2026-04-${10+ENTITIES.indexOf(e)*2}`,
+}));
+function renderP1(){
+  const complete=TRACKER_DATA.filter(r=>r.report&&r.keyDrivers&&r.ratioCommit).length;
+  const partial =TRACKER_DATA.filter(r=>r.report&&(!r.keyDrivers||!r.ratioCommit)).length;
+  const pending =TRACKER_DATA.filter(r=>!r.report).length;
+  document.getElementById('p1-metrics').innerHTML=`
+    <div class="metric ok"><div class="m-label">Hoàn chỉnh</div><div class="m-value pos">${complete}/${TRACKER_DATA.length}</div></div>
+    <div class="metric ${partial>0?'fail':'ok'}"><div class="m-label">Chưa đủ sheet</div><div class="m-value ${partial>0?'neg':'pos'}">${partial}</div></div>
+    <div class="metric ${pending>0?'fail':'ok'}"><div class="m-label">Chưa nộp</div><div class="m-value ${pending>0?'neg':'pos'}">${pending}</div></div>
+  `;
+  // Group progress
+  document.getElementById('p1-progress').innerHTML=['GEE','GEL'].map(g=>{
+    const gr=TRACKER_DATA.filter(r=>r.group===g);
+    const done=gr.filter(r=>r.report&&r.keyDrivers&&r.ratioCommit).length;
+    const pct=(done/gr.length*100).toFixed(0);
+    const tags=gr.map(r=>`<span class="badge ${r.report&&r.keyDrivers&&r.ratioCommit?'ok':r.report?'partial':'break'}">${r.ma}</span>`).join(' ');
+    return `<div class="stcard"><div class="stcard-title" style="color:${GC[g]}">${g} Group</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-bottom:6px"><span>${done}/${gr.length} hoàn chỉnh</span><span>${pct}%</span></div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%;background:${GC[g]}"></div></div>
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px">${tags}</div></div>`;
+  }).join('');
+  // Table
+  const tbl=document.getElementById('tracker-table');
+  tbl.innerHTML=`<thead><tr>${["Mã đơn vị","Tên đơn vị","Group","Sheet Report","Sheet Key drivers","Sheet Ratio_commit","Cập nhật lần cuối","Trạng thái"].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+  <tbody>${TRACKER_DATA.map(r=>{
+    const all=r.report&&r.keyDrivers&&r.ratioCommit;
+    const sc=all?'ok':r.report?'partial':'break';
+    const sl=all?'Hoàn chỉnh':r.report?'Chưa đủ':'Chưa nộp';
+    return `<tr><td style="font-weight:700;color:${GC[r.group]}">${r.ma}</td><td style="color:#6B7280;font-size:10px">${r.ten}</td><td><span class="badge ${r.group.toLowerCase()}">${r.group}</span></td>
+    ${[r.report,r.keyDrivers,r.ratioCommit].map(v=>`<td style="text-align:center;color:${v?'#166534':'#991B1B'};font-size:14px">${v?'✓':'✗'}</td>`).join('')}
+    <td style="color:#6B7280">${r.lastUpdate}</td><td><span class="badge ${sc}">${sl}</span></td></tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ── PAGE 2 — STRATEGIC ────────────────────────────────────────────────────────
+function renderP2(){
+  const ents=cttvList();
+  const periods=selYears.flatMap(y=>selQtrs.map(q=>({y,q,key:`${y}-${q}`})));
+  const totNet=ents.reduce((s,e)=>s+periods.reduce((a,p)=>a+getNet(e.ma,p.y,p.q),0),0);
+  const totDiv=REPORT_ROWS.filter(r=>r["Code"].startsWith("CF36")&&r["Phân loại Bên trong và bên ngoài"]==="Bên trong"&&selYears.includes(r["Năm"])&&selQtrs.includes(r["Quý"])).reduce((s,r)=>s+Math.abs(r["Số tiền tổng"]||0),0);
+  document.getElementById('p2-metrics').innerHTML=`
+    <div class="metric ${totNet>=0?'ok':'fail'}"><div class="m-label">Lưu chuyển tiền thuần tổng hợp</div><div class="m-value ${totNet>=0?'pos':'neg'}">${fmt(totNet)}</div></div>
+    <div class="metric"><div class="m-label">CF36 Bên trong</div><div class="m-value pos">${fmt(totDiv)}</div><div class="m-delta">Cổ tức nội bộ</div></div>
+    <div class="metric"><div class="m-label">Số CTTV</div><div class="m-value blue">${ents.length}</div></div>
+    <div class="metric"><div class="m-label">Số kỳ</div><div class="m-value">${periods.length}</div></div>
+  `;
+  renderSankey(); renderHeatmap(); renderCumulative();
+}
+
+// ── Sankey filter state ────────────────────────────────────────────────────────
+let sankeyFilterOD = 'all'; // all | stable | unstable
+let sankeyFilterNB = 'all'; // all | internal | external
+
+function setSankeyFilter(dim, val, btn){
+  if(dim==='od'){
+    sankeyFilterOD=val;
+    document.querySelectorAll('#sankey-od-filter .btn').forEach(b=>b.classList.toggle('active',b===btn));
+  } else {
+    sankeyFilterNB=val;
+    document.querySelectorAll('#sankey-nb-filter .btn').forEach(b=>b.classList.toggle('active',b===btn));
+  }
+  renderSankeyFilterBadge();
+  renderSankey();
+}
+
+function renderSankeyFilterBadge(){
+  const badge = document.getElementById('sankey-filter-badge');
+  if(!badge) return;
+  const odLabels = {all:'',stable:'✓ Ổn định',unstable:'✓ Không ổn định'};
+  const nbLabels = {all:'',internal:'✓ Bên trong',external:'✓ Bên ngoài'};
+  const items = [
+    sankeyFilterOD!=='all' ? {label:odLabels[sankeyFilterOD],color:'#166534',bg:'#DCFCE7'} : null,
+    sankeyFilterNB!=='all' ? {label:nbLabels[sankeyFilterNB],color:'#4527A0',bg:'#EDE9FE'} : null,
+  ].filter(Boolean);
+  badge.innerHTML = items.length
+    ? items.map(i=>`<span style="padding:2px 10px;border-radius:12px;font-size:10px;background:${i.bg};color:${i.color};font-weight:600">${i.label}</span>`).join('')
+    : '<span style="font-size:10px;color:#9CA3AF">Không có filter — hiển thị tất cả dòng tiền</span>';
+}
+
+function renderSankey(){
+  const nam  = +document.getElementById('sankey-nam').value;
+  const type = document.getElementById('sankey-type').value;
+  const nodeLabels    = ['THI','CADIVI','CMB','MEE','HEM','EMIC','VGC','Viwasupco','PXL','TITANMP','GEE','GEL','GELEX'];
+  const nodeColors    = ['#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#F3E8FF','#F3E8FF','#F3E8FF','#F3E8FF','#1565C0','#6A1B9A','#92400E'];
+  const nodeLineColors= ['#1565C0','#1565C0','#1565C0','#1565C0','#1565C0','#1565C0','#6A1B9A','#6A1B9A','#6A1B9A','#6A1B9A','#1565C0','#6A1B9A','#92400E'];
+  const idx = l => nodeLabels.indexOf(l);
+
+  // Base row filter — apply OD + NB filters on top of CF36 filter
+  const baseFilter = r => {
+    if(r["Năm"]!==nam || r["Quý"]!==sankeyQuy) return false;
+    if(type!=='all' && !r["Code"].startsWith(type)) return false;
+    if(sankeyFilterOD==='stable'   && r["Phân loại ổn định và không ổn định"]!=="Ổn định") return false;
+    if(sankeyFilterOD==='unstable' && r["Phân loại ổn định và không ổn định"]!=="Không ổn định") return false;
+    if(sankeyFilterNB==='internal' && r["Phân loại Bên trong và bên ngoài"]!=="Bên trong") return false;
+    if(sankeyFilterNB==='external' && r["Phân loại Bên trong và bên ngoài"]!=="Bên ngoài") return false;
+    return Math.abs(r["Số tiền tổng"]||0)>0;
+  };
+
+  const src=[], tgt=[], val=[], clr=[], hov=[];
+
+  ENTITIES.filter(e=>e.group==="GEE").forEach(e=>{
+    const v = REPORT_ROWS.filter(r=>r["Mã đơn vị"]===e.ma && baseFilter(r))
+                         .reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){src.push(idx(e.ma));tgt.push(idx('GEE'));val.push(v);clr.push('rgba(21,101,192,0.4)');
+            hov.push(`${e.ma} → GEE: ${fmt(v)} triệu`);}
+  });
+  ENTITIES.filter(e=>e.group==="GEL").forEach(e=>{
+    const v = REPORT_ROWS.filter(r=>r["Mã đơn vị"]===e.ma && baseFilter(r))
+                         .reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){src.push(idx(e.ma));tgt.push(idx('GEL'));val.push(v);clr.push('rgba(106,27,154,0.4)');
+            hov.push(`${e.ma} → GEL: ${fmt(v)} triệu`);}
+  });
+
+  // Sub-holding → GELEX (always CF36 Bên trong, but respect OD filter)
+  ['GEE','GEL'].forEach(g=>{
+    const subIdx = g==='GEE' ? idx('GEE') : idx('GEL');
+    const v = REPORT_ROWS.filter(r=>
+      r["Code"].startsWith("CF36") &&
+      r["Phân loại Bên trong và bên ngoài"]==="Bên trong" &&
+      r["Năm"]===nam && r["Quý"]===sankeyQuy &&
+      (sankeyFilterOD==='all' ||
+       (sankeyFilterOD==='stable' && r["Phân loại ổn định và không ổn định"]==="Ổn định") ||
+       (sankeyFilterOD==='unstable' && r["Phân loại ổn định và không ổn định"]==="Không ổn định")) &&
+      ENTITIES.filter(e=>e.group===g).some(e=>e.ma===r["Mã đơn vị"])
+    ).reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){
+      src.push(subIdx); tgt.push(idx('GELEX')); val.push(v);
+      clr.push(g==='GEE'?'rgba(21,101,192,0.55)':'rgba(106,27,154,0.55)');
+      hov.push(`${g} → GELEX (Cổ tức): ${fmt(v)} triệu`);
+    }
+  });
+
+  renderSankeyFilterBadge();
+
+  if(val.length===0){
+    document.getElementById('chart-sankey').innerHTML=
+      `<div style="padding:20px;color:#6B7280;font-size:12px">
+         ⚠ Không có dòng tiền thỏa điều kiện lọc trong kỳ ${nam}-${sankeyQuy}.
+         <br><span style="font-size:11px;margin-top:4px;display:block">
+         Thử: bỏ filter Ổn định / Nội-ngoại, hoặc đổi sang quý khác có giao dịch CF36.</span>
+       </div>`;
+    return;
+  }
+
+  Plotly.newPlot('chart-sankey',[{
+    type:'sankey', orientation:'h',
+    node:{pad:12,thickness:16,label:nodeLabels,color:nodeColors,
+          line:{color:nodeLineColors,width:0.5},
+          hovertemplate:'<b>%{label}</b><br>Tổng luân chuyển: %{value:,.0f} triệu<extra></extra>'},
+    link:{source:src,target:tgt,value:val,color:clr,
+          customdata:hov,hovertemplate:'%{customdata}<extra></extra>'},
+  }],{height:320,margin:{t:20,b:10,l:10,r:10},
+      paper_bgcolor:'transparent',font:{family:'Arial',size:11}},{responsive:true});
+}
+
+
+function renderSankey(){
+  const nam  = +document.getElementById('sankey-nam').value;
+  const type = document.getElementById('sankey-type').value;
+  const nodeLabels    = ['THI','CADIVI','CMB','MEE','HEM','EMIC','VGC','Viwasupco','PXL','TITANMP','GEE','GEL','GELEX'];
+  const nodeColors    = ['#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#DBEAFE','#F3E8FF','#F3E8FF','#F3E8FF','#F3E8FF','#1565C0','#6A1B9A','#92400E'];
+  const nodeLineColors= ['#1565C0','#1565C0','#1565C0','#1565C0','#1565C0','#1565C0','#6A1B9A','#6A1B9A','#6A1B9A','#6A1B9A','#1565C0','#6A1B9A','#92400E'];
+  const idx = l => nodeLabels.indexOf(l);
+
+  // Base row filter — apply OD + NB filters on top of CF36 filter
+  const baseFilter = r => {
+    if(r["Năm"]!==nam || r["Quý"]!==sankeyQuy) return false;
+    if(type!=='all' && !r["Code"].startsWith(type)) return false;
+    if(sankeyFilterOD==='stable'   && r["Phân loại ổn định và không ổn định"]!=="Ổn định") return false;
+    if(sankeyFilterOD==='unstable' && r["Phân loại ổn định và không ổn định"]!=="Không ổn định") return false;
+    if(sankeyFilterNB==='internal' && r["Phân loại Bên trong và bên ngoài"]!=="Bên trong") return false;
+    if(sankeyFilterNB==='external' && r["Phân loại Bên trong và bên ngoài"]!=="Bên ngoài") return false;
+    return Math.abs(r["Số tiền tổng"]||0)>0;
+  };
+
+  const src=[], tgt=[], val=[], clr=[], hov=[];
+
+  ENTITIES.filter(e=>e.group==="GEE").forEach(e=>{
+    const v = REPORT_ROWS.filter(r=>r["Mã đơn vị"]===e.ma && baseFilter(r))
+                         .reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){src.push(idx(e.ma));tgt.push(idx('GEE'));val.push(v);clr.push('rgba(21,101,192,0.4)');
+            hov.push(`${e.ma} → GEE: ${fmt(v)} triệu`);}
+  });
+  ENTITIES.filter(e=>e.group==="GEL").forEach(e=>{
+    const v = REPORT_ROWS.filter(r=>r["Mã đơn vị"]===e.ma && baseFilter(r))
+                         .reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){src.push(idx(e.ma));tgt.push(idx('GEL'));val.push(v);clr.push('rgba(106,27,154,0.4)');
+            hov.push(`${e.ma} → GEL: ${fmt(v)} triệu`);}
+  });
+
+  // Sub-holding → GELEX (always CF36 Bên trong, but respect OD filter)
+  ['GEE','GEL'].forEach(g=>{
+    const subIdx = g==='GEE' ? idx('GEE') : idx('GEL');
+    const v = REPORT_ROWS.filter(r=>
+      r["Code"].startsWith("CF36") &&
+      r["Phân loại Bên trong và bên ngoài"]==="Bên trong" &&
+      r["Năm"]===nam && r["Quý"]===sankeyQuy &&
+      (sankeyFilterOD==='all' ||
+       (sankeyFilterOD==='stable' && r["Phân loại ổn định và không ổn định"]==="Ổn định") ||
+       (sankeyFilterOD==='unstable' && r["Phân loại ổn định và không ổn định"]==="Không ổn định")) &&
+      ENTITIES.filter(e=>e.group===g).some(e=>e.ma===r["Mã đơn vị"])
+    ).reduce((a,r)=>a+Math.abs(r["Số tiền tổng"]||0),0);
+    if(v>0){
+      src.push(subIdx); tgt.push(idx('GELEX')); val.push(v);
+      clr.push(g==='GEE'?'rgba(21,101,192,0.55)':'rgba(106,27,154,0.55)');
+      hov.push(`${g} → GELEX (Cổ tức): ${fmt(v)} triệu`);
+    }
+  });
+
+  renderSankeyFilterBadge();
+
+  if(val.length===0){
+    document.getElementById('chart-sankey').innerHTML=
+      `<div style="padding:20px;color:#6B7280;font-size:12px">
+         ⚠ Không có dòng tiền thỏa điều kiện lọc trong kỳ ${nam}-${sankeyQuy}.
+         <br><span style="font-size:11px;margin-top:4px;display:block">
+         Thử: bỏ filter Ổn định / Nội-ngoại, hoặc đổi sang quý khác có giao dịch CF36.</span>
+       </div>`;
+    return;
+  }
+
+  Plotly.newPlot('chart-sankey',[{
+    type:'sankey', orientation:'h',
+    node:{pad:12,thickness:16,label:nodeLabels,color:nodeColors,
+          line:{color:nodeLineColors,width:0.5},
+          hovertemplate:'<b>%{label}</b><br>Tổng luân chuyển: %{value:,.0f} triệu<extra></extra>'},
+    link:{source:src,target:tgt,value:val,color:clr,
+          customdata:hov,hovertemplate:'%{customdata}<extra></extra>'},
+  }],{height:320,margin:{t:20,b:10,l:10,r:10},
+      paper_bgcolor:'transparent',font:{family:'Arial',size:11}},{responsive:true});
+}
+
+// ── Heatmap filter state ────────────────────────────────────────────────────────
+let heatmapFilterOD = 'all';  // all | stable | unstable
+let heatmapFilterNB = 'all';  // all | internal | external
+let heatmapFilterKM = 'all';  // all | CFO | CFI | CFF
+
+function setHeatmapFilter(dim, val, btn){
+  if(dim==='od')     { heatmapFilterOD=val; document.querySelectorAll('#heatmap-od-filter .btn').forEach(b=>b.classList.toggle('active',b===btn)); }
+  else if(dim==='nb'){ heatmapFilterNB=val; document.querySelectorAll('#heatmap-nb-filter .btn').forEach(b=>b.classList.toggle('active',b===btn)); }
+  else               { heatmapFilterKM=val; document.querySelectorAll('#heatmap-km-filter .btn').forEach(b=>b.classList.toggle('active',b===btn)); }
+  renderHeatmap();
+}
+
+function renderHeatmap(){
+  const ents = cttvList();
+  const periods = selYears.flatMap(y=>selQtrs.map(q=>({y,q,key:`${y}-${q}`})));
+
+  // Filter label for subtitle
+  const odLabel = {all:'',stable:' · Ổn định',unstable:' · Không ổn định'}[heatmapFilterOD];
+  const nbLabel = {all:'',internal:' · Bên trong',external:' · Bên ngoài'}[heatmapFilterNB];
+  const kmLabel = {all:'',CFO:' · CFO',CFI:' · CFI',CFF:' · CFF'}[heatmapFilterKM];
+  const activeLabel = document.getElementById('heatmap-active-filters');
+  if(activeLabel){
+    const filters = [odLabel,nbLabel,kmLabel].filter(Boolean).join('');
+    activeLabel.textContent = filters ? 'Đang lọc:' + filters : '';
+  }
+
+  const getFiltered = (ma, y, q) => {
+    let rows = REPORT_ROWS.filter(r=>r["Mã đơn vị"]===ma&&r["Năm"]===y&&r["Quý"]===q);
+    if(heatmapFilterOD==='stable')   rows=rows.filter(r=>r["Phân loại ổn định và không ổn định"]==="Ổn định");
+    if(heatmapFilterOD==='unstable') rows=rows.filter(r=>r["Phân loại ổn định và không ổn định"]==="Không ổn định");
+    if(heatmapFilterNB==='internal') rows=rows.filter(r=>r["Phân loại Bên trong và bên ngoài"]==="Bên trong");
+    if(heatmapFilterNB==='external') rows=rows.filter(r=>r["Phân loại Bên trong và bên ngoài"]==="Bên ngoài");
+    if(heatmapFilterKM!=='all')      rows=rows.filter(r=>r["Khoản mục"]===heatmapFilterKM);
+    return rows.reduce((s,r)=>s+(r["Số tiền tổng"]||0),0);
+  };
+
+  const z    = ents.map(e=>periods.map(p=>getFiltered(e.ma,p.y,p.q)));
+  const text = z.map(row=>row.map(v=>fmt(v)));
+
+  // Colorscale: diverging green-white-red, but for internal-only use purple scale
+  const colorscale = heatmapFilterNB==='internal'
+    ? [[0,'#EDE9FE'],[0.5,'#F9FAFB'],[1,'#4527A0']]  // purple for internal
+    : [[0,'#991B1B'],[0.5,'#F9FAFB'],[1,'#166534']];  // green-red default
+
+  const subtitleParts = ['Tổng Số tiền tổng',odLabel,nbLabel,kmLabel].filter(Boolean);
+
+  Plotly.newPlot('chart-heatmap',[{
+    type:'heatmap', z, x:periods.map(p=>p.key), y:ents.map(e=>e.ma),
+    text, texttemplate:'%{text}',
+    colorscale, zmid:0, showscale:true, xgap:2, ygap:2,
+    hovertemplate:'<b>%{y}</b> · %{x}<br>' + subtitleParts.join('') + ': <b>%{text}</b><extra></extra>',
+  }],{
+    height:Math.max(200,ents.length*32+60),
+    margin:{t:10,b:80,l:80,r:60},
+    xaxis:{tickangle:-45,tickfont:{size:9}},
+    yaxis:{tickfont:{size:10}},
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    font:{family:'Arial'}
+  },{responsive:true});
+}
+
+// ── Cumulative mode state ────────────────────────────────────────────────────
+let cumMode = 'total';
+
+function setCumMode(mode, btn){
+  cumMode = mode;
+  document.querySelectorAll('#cum-mode-btns .btn').forEach(b=>b.classList.toggle('active',b===btn));
+  const sec = document.getElementById('cum-breakdown-section');
+  if(sec) sec.style.display = mode==='total' ? 'none' : 'block';
+  renderCumulative();
+}
+
+function renderCumulative(){
+  const ents    = cttvList();
+  const periods = selYears.flatMap(y=>selQtrs.map(q=>({y,q,key:`${y}-${q}`})));
+  if(!periods.length) return;
+
+  // ── Compute per-period data ──────────────────────────────────────────────
+  let cumTotal=0, cumStable=0, cumUnstable=0;
+  const labels=[], netArr=[], cumArr=[];
+  const stableArr=[], unstableArr=[];
+  const cumStableArr=[], cumUnstableArr=[];
+  const pctStableArr=[];
+
+  periods.forEach(p=>{
+    const rows = REPORT_ROWS.filter(r=>
+      ents.some(e=>e.ma===r["Mã đơn vị"]) && r["Năm"]===p.y && r["Quý"]===p.q
+    );
+    const net      = rows.reduce((s,r)=>s+(r["Số tiền tổng"]||0),0);
+    const stable   = rows.filter(r=>r["Phân loại ổn định và không ổn định"]==="Ổn định")
+                         .reduce((s,r)=>s+(r["Số tiền tổng"]||0),0);
+    const unstable = rows.filter(r=>r["Phân loại ổn định và không ổn định"]==="Không ổn định")
+                         .reduce((s,r)=>s+(r["Số tiền tổng"]||0),0);
+    const absTotal = Math.abs(stable)+Math.abs(unstable)||1;
+
+    cumTotal    += net;
+    cumStable   += stable;
+    cumUnstable += unstable;
+
+    labels.push(p.key);
+    netArr.push(net);
+    cumArr.push(cumTotal);
+    stableArr.push(stable);
+    unstableArr.push(unstable);
+    cumStableArr.push(cumStable);
+    cumUnstableArr.push(cumUnstable);
+    pctStableArr.push(+(Math.abs(stable)/absTotal*100).toFixed(1));
+  });
+
+  // ── Shared layout base ───────────────────────────────────────────────────
+  const baseLayout = {
+    margin:{t:10,b:45,l:72,r:14},
+    legend:{orientation:'h',y:-0.32,font:{size:10}},
+    xaxis:{tickangle:-45,tickfont:{size:9}},
+    yaxis:{tickfont:{size:9},title:'Triệu VNĐ'},
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    font:{family:'Arial'}
+  };
+
+  const sub = document.getElementById('cum-subtitle');
+
+  // ── MODE: total ──────────────────────────────────────────────────────────
+  if(cumMode==='total'){
+    if(sub) sub.textContent='Cột = net CF từng kỳ · Đường = tích lũy cộng dồn';
+    Plotly.newPlot('chart-cumulative',[
+      {name:'Net CF từng kỳ', x:labels, y:netArr, type:'bar',
+       marker:{color:netArr.map(v=>v>=0?'rgba(22,101,52,0.55)':'rgba(153,27,27,0.55)')},
+       hovertemplate:'%{x}<br>Net CF: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'Tích lũy cộng dồn', x:labels, y:cumArr, type:'scatter',mode:'lines+markers',
+       line:{color:'#1565C0',width:2.5},
+       marker:{color:cumArr.map(v=>v>=0?'#166534':'#991B1B'),size:5},
+       hovertemplate:'%{x}<br>Tích lũy: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+    ],{...baseLayout, barmode:'overlay', height:280},{responsive:true});
+  }
+
+  // ── MODE: split (2 cumulative lines + area fill) ─────────────────────────
+  else if(cumMode==='split'){
+    if(sub) sub.textContent='Đường xanh = tích lũy CF Ổn định · Đường đỏ = tích lũy CF Không ổn định · Net tổng = dash';
+    Plotly.newPlot('chart-cumulative',[
+      {name:'Tích lũy CF Ổn định', x:labels, y:cumStableArr,
+       type:'scatter', mode:'lines+markers',
+       line:{color:'#166534',width:2.5},
+       marker:{color:'#166534',size:5},
+       fill:'tozeroy', fillcolor:'rgba(22,101,52,0.07)',
+       hovertemplate:'%{x}<br>Tích lũy Ổn định: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'Tích lũy CF Không ổn định', x:labels, y:cumUnstableArr,
+       type:'scatter', mode:'lines+markers',
+       line:{color:'#991B1B',width:2, dash:'dot'},
+       marker:{color:'#991B1B',size:5},
+       hovertemplate:'%{x}<br>Tích lũy KÔĐ: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'Tích lũy Net tổng', x:labels, y:cumArr,
+       type:'scatter', mode:'lines',
+       line:{color:'#1565C0',width:1.5, dash:'dash'},
+       hovertemplate:'%{x}<br>Net tổng: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+    ],{...baseLayout, height:280},{responsive:true});
+  }
+
+  // ── MODE: stacked bar ────────────────────────────────────────────────────
+  else if(cumMode==='stacked'){
+    if(sub) sub.textContent='Cột chồng = CF Ổn định + CF KÔĐ · Đường = tích lũy Net tổng (trục phải)';
+    Plotly.newPlot('chart-cumulative',[
+      {name:'CF Ổn định', x:labels, y:stableArr, type:'bar',
+       marker:{color:'rgba(22,101,52,0.75)'},
+       hovertemplate:'%{x}<br>CF Ổn định: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'CF Không ổn định', x:labels, y:unstableArr, type:'bar',
+       marker:{color:'rgba(153,27,27,0.65)'},
+       hovertemplate:'%{x}<br>CF KÔĐ: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'Tích lũy Net', x:labels, y:cumArr,
+       type:'scatter', mode:'lines+markers', yaxis:'y2',
+       line:{color:'#1565C0',width:2.5},
+       marker:{color:cumArr.map(v=>v>=0?'#166534':'#991B1B'),size:4},
+       hovertemplate:'%{x}<br>Tích lũy: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+    ],{
+      ...baseLayout,
+      barmode:'relative', height:280,
+      margin:{...baseLayout.margin,r:65},
+      yaxis2:{title:'Tích lũy (triệu)',overlaying:'y',side:'right',
+              tickfont:{size:9},tickformat:',.0f'},
+    },{responsive:true});
+  }
+
+  // ── Breakdown sub-charts (split + stacked modes) ─────────────────────────
+  if(cumMode!=='total'){
+    // Bar chart: stable vs unstable per period
+    Plotly.newPlot('chart-cum-bars',[
+      {name:'Ổn định', x:labels, y:stableArr, type:'bar',
+       marker:{color:'rgba(22,101,52,0.75)'},
+       hovertemplate:'%{x}<br>Ổn định: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+      {name:'Không ổn định', x:labels, y:unstableArr, type:'bar',
+       marker:{color:'rgba(153,27,27,0.65)'},
+       hovertemplate:'%{x}<br>KÔĐ: <b>%{y:,.0f}</b> triệu<extra></extra>'},
+    ],{
+      barmode:'group', height:165,
+      margin:{t:4,b:40,l:60,r:8},
+      legend:{orientation:'h',y:-0.45,font:{size:9}},
+      xaxis:{tickangle:-45,tickfont:{size:8}},
+      yaxis:{tickfont:{size:8},title:'Triệu VNĐ'},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      font:{family:'Arial'}
+    },{responsive:true});
+
+    // % stable trend
+    Plotly.newPlot('chart-cum-pct',[
+      {name:'% CF Ổn định', x:labels, y:pctStableArr,
+       type:'scatter', mode:'lines+markers',
+       line:{color:'#D97706',width:2.5},
+       marker:{
+         color:pctStableArr.map(v=>v>=60?'#166534':'#991B1B'),
+         size:6, symbol:'circle'
+       },
+       fill:'tozeroy', fillcolor:'rgba(217,119,6,0.07)',
+       hovertemplate:'%{x}<br>% Ổn định: <b>%{y:.1f}%</b><extra></extra>'},
+      {name:'Ngưỡng 60%', x:labels, y:Array(labels.length).fill(60),
+       type:'scatter', mode:'lines',
+       line:{color:'#9CA3AF',width:1.2,dash:'dot'},
+       hoverinfo:'none'},
+    ],{
+      height:165,
+      margin:{t:4,b:40,l:40,r:8},
+      legend:{orientation:'h',y:-0.45,font:{size:9}},
+      xaxis:{tickangle:-45,tickfont:{size:8}},
+      yaxis:{tickfont:{size:8},range:[0,110],ticksuffix:'%'},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      font:{family:'Arial'},
+      shapes:[{type:'rect',xref:'paper',x0:0,x1:1,yref:'y',y0:60,y1:110,
+               fillcolor:'rgba(22,101,52,0.04)',line:{width:0}}]
+    },{responsive:true});
+
+    // Summary strip
+    const totalStableCum   = Math.abs(cumStableArr[cumStableArr.length-1]||0);
+    const totalUnstableCum = Math.abs(cumUnstableArr[cumUnstableArr.length-1]||0);
+    const pctStableOverall = (totalStableCum/(totalStableCum+totalUnstableCum||1)*100).toFixed(0);
+    const avgPct = (pctStableArr.reduce((s,v)=>s+v,0)/pctStableArr.length).toFixed(0);
+    const breachQtrs = pctStableArr.filter(v=>v<60).length;
+    const summaryEl = document.getElementById('cum-stability-summary');
+    if(summaryEl) summaryEl.innerHTML = [
+      {icon:'📊', label:'Tích lũy CF Ổn định',  val:fmt(cumStableArr[cumStableArr.length-1]||0),   color:'#166534', bg:'#F0FDF4'},
+      {icon:'📉', label:'Tích lũy CF Không ổn định', val:fmt(cumUnstableArr[cumUnstableArr.length-1]||0), color:'#991B1B', bg:'#FEF2F2'},
+      {icon:'⚡', label:'% Ổn định trung bình', val:avgPct+'%',  color:+avgPct>=60?'#166534':'#991B1B', bg:+avgPct>=60?'#F0FDF4':'#FEF2F2'},
+      {icon:'⚠️', label:'Kỳ dưới ngưỡng 60%',  val:breachQtrs+' kỳ', color:breachQtrs===0?'#166534':'#92400E', bg:breachQtrs===0?'#F0FDF4':'#FFFBEB'},
+    ].map(s=>`
+      <div style="flex:1;min-width:140px;padding:10px 14px;background:${s.bg};border-radius:8px;border:1px solid ${s.color}33">
+        <div style="font-size:10px;color:#6B7280;margin-bottom:3px">${s.icon} ${s.label}</div>
+        <div style="font-size:16px;font-weight:700;color:${s.color};font-family:Arial">${s.val}</div>
+      </div>`).join('');
+  }
+
+  // ── Surplus alert ────────────────────────────────────────────────────────
+  const surplusIdx = cumArr.findIndex(v=>v>100000);
+  const sAlert = document.getElementById('p2-surplus-alert');
+  if(sAlert) sAlert.innerHTML = surplusIdx>=0
+    ? `<div class="stsuccess" style="margin-top:14px">💡 <b>Tích lũy surplus vượt 100B</b> từ kỳ ${labels[surplusIdx]} — Tập đoàn có thể lên kế hoạch triển khai vốn đầu tư mới.</div>` : '';
+}
+
+// ── PAGE 3 — SUB DIVE ─────────────────────────────────────────────────────────
+function renderP3(){
+  const ma=document.getElementById('sub-select').value;
+  const ent=ENTITIES.find(e=>e.ma===ma);
+  const periods=selYears.flatMap(y=>selQtrs.map(q=>({y,q,key:`${y}-${q}`})));
+
+  document.getElementById('p3-sub-header').innerHTML=`
+    <b style="color:${GC[ent.group]}">${ent.ten}</b>
+    <span class="badge ${ent.group.toLowerCase()}" style="margin-left:8px">${ent.group}</span>
+    <span class="badge external" style="margin-left:4px">${ent.phanCap}</span>
+  `;
+
+  // KPIs — st.metric()
+  const q1v=getNet(ma,selYears[0]||2026,'Q1'), q2v=getNet(ma,selYears[0]||2026,'Q2');
+  const q3v=getNet(ma,selYears[0]||2026,'Q3'), q4v=getNet(ma,selYears[0]||2026,'Q4');
+  const tot=periods.reduce((s,p)=>s+getNet(ma,p.y,p.q),0);
+  document.getElementById('p3-metrics').innerHTML=[
+    {l:`${selYears[0]||2026} Q1`,v:q1v},{l:`${selYears[0]||2026} Q2`,v:q2v},
+    {l:`${selYears[0]||2026} Q3`,v:q3v},{l:`${selYears[0]||2026} Q4`,v:q4v},
+    {l:"Tổng kỳ chọn",v:tot}
+  ].map(({l,v})=>`<div class="metric ${v>=0?'ok':'fail'}"><div class="m-label">${l}</div><div class="m-value ${v>=0?'pos':'neg'}">${fmt(v)}</div></div>`).join('');
+
+  // Timeline chart
+  let cum=0;
+  const netArr=[], cumArr=[], lbl=[];
+  periods.forEach(p=>{const n=getNet(ma,p.y,p.q);cum+=n;netArr.push(n);cumArr.push(cum);lbl.push(p.key);});
+  Plotly.newPlot('chart-sub-timeline',[
+    {name:'Lưu chuyển tiền thuần',x:lbl,y:netArr,type:'bar',marker:{color:netArr.map(v=>v>=0?'rgba(22,101,52,0.6)':'rgba(153,27,27,0.6)')},yaxis:'y'},
+    {name:'Tích lũy',x:lbl,y:cumArr,type:'scatter',mode:'lines+markers',line:{color:GC[ent.group],width:2},marker:{size:4},yaxis:'y'},
+  ],{barmode:'overlay',height:200,margin:{t:6,b:40,l:60,r:10},
+     legend:{orientation:'h',y:-0.35,font:{size:10}},
+     xaxis:{tickangle:-45,tickfont:{size:8}},yaxis:{tickfont:{size:9}},
+     paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{family:'Arial'}},{responsive:true});
+
+  // CF36 nội bộ
+  const cf36Rows=REPORT_ROWS.filter(r=>r["Mã đơn vị"]===ma&&r["Code"].startsWith("CF36")&&r["Phân loại Bên trong và bên ngoài"]==="Bên trong"&&selYears.includes(r["Năm"])&&selQtrs.includes(r["Quý"]));
+  document.getElementById('p3-cf36').innerHTML=cf36Rows.length
+    ?cf36Rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:6px 10px;background:#F9FAFB;border-radius:5px;margin-bottom:5px">
+        <div><span style="font-size:11px;color:#374151">${r["Năm"]} ${r["Quý"]}</span>
+        <span style="font-size:10px;color:#6B7280;margin-left:8px">→ ${r["Đối tượng giao dịch kinh tế"]||"—"}</span></div>
+        <span style="font-size:11px;font-weight:700;color:${r["Số tiền tổng"]<=0?'#991B1B':'#166534'}">${fmt(r["Số tiền tổng"])}</span>
+      </div>`).join('')
+    :'<div style="font-size:11px;color:#6B7280;padding:8px">Không có CF36 Bên trong trong kỳ chọn</div>';
+
+  // Report table
+  document.getElementById('p3-report-sub').textContent=`Sheet Report · ${ma} · ${selYears[0]||2026} ${selQtrs[0]||"Q1"} · Khoản mục: ${cfTab}`;
+  const repRows=REPORT_ROWS.filter(r=>r["Mã đơn vị"]===ma&&r["Năm"]===(selYears[0]||2026)&&r["Quý"]===(selQtrs[0]||"Q1")&&r["Khoản mục"]===cfTab);
+  document.getElementById('p3-report-table').innerHTML=`
+    <thead><tr>${["Code","Khoản mục","Chỉ tiêu","Phân loại ổn định và không ổn định","Phân loại Bên trong và bên ngoài","Đối tượng giao dịch kinh tế","Số tiền tổng"].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${repRows.map(r=>`<tr>
+      <td style="color:#6B7280;font-size:10px">${r["Code"]}</td>
+      <td><span class="badge ${cfTab.toLowerCase()}">${r["Khoản mục"]}</span></td>
+      <td style="max-width:220px;font-size:10px">${r["Chỉ tiêu"]}</td>
+      <td><span class="badge ${r["Phân loại ổn định và không ổn định"]==="Ổn định"?"stable":"unstable"}">${r["Phân loại ổn định và không ổn định"]}</span></td>
+      <td><span class="badge ${r["Phân loại Bên trong và bên ngoài"]==="Bên trong"?"internal":"external"}">${r["Phân loại Bên trong và bên ngoài"]}</span></td>
+      <td style="color:#6B7280;font-size:10px">${r["Đối tượng giao dịch kinh tế"]||"—"}</td>
+      <td style="text-align:right;font-weight:700;color:${r["Số tiền tổng"]>=0?'#166534':'#991B1B'}">${fmt(r["Số tiền tổng"])}</td>
+    </tr>`).join('')}</tbody>`;
+
+  // Key drivers table
+  const driverRows=KEY_DRIVER_ROWS.filter(r=>r["Mã đơn vị"]===ma);
+  document.getElementById('p3-drivers-table').innerHTML=driverRows.length?`
+    <thead><tr>${["Group","Code","Chỉ tiêu","Cấu phần value chain","Key drivers","Phân loại Ổn định & Không ổn định","Rationale ổn định or không ổn định"].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${driverRows.map(r=>`<tr>
+      <td><span class="badge ${r.Group.toLowerCase()}">${r.Group}</span></td>
+      <td style="color:#6B7280;font-size:10px">${r.Code}</td>
+      <td style="font-size:10px">${r["Chỉ tiêu"]}</td>
+      <td>${r["Cấu phần value chain"]?`<span class="badge cfo" style="font-size:9px">${r["Cấu phần value chain"]}</span>`:""}</td>
+      <td style="font-size:10px">${r["Key drivers"]||"—"}</td>
+      <td><span class="badge ${r["Phân loại Ổn định & Không ổn định"]==="Ổn định"?"stable":"unstable"}" style="font-size:9px">${r["Phân loại Ổn định & Không ổn định"]}</span></td>
+      <td style="font-size:10px;color:#6B7280">${r["Rationale ổn định or không ổn định"]||"—"}</td>
+    </tr>`).join('')}</tbody>`
+    :`<tr><td colspan="7" style="color:#6B7280;padding:12px">Chưa có dữ liệu Key drivers cho ${ma}</td></tr>`;
+
+  // Covenant
+  const covRows=RATIO_ROWS.filter(r=>r["Mã đơn vị"]===ma);
+  const chiTieus=[...new Set(covRows.map(r=>r["Chỉ tiêu cam kết"]))];
+  const covTabsEl=document.getElementById('cov-tabs');
+  covTabsEl.innerHTML=chiTieus.map((ct,i)=>`<button class="stab ${i===covTabIdx?'active':''}" onclick="covTabIdx=${i};renderCovChart('${ma}')">${ct}</button>`).join('');
+  renderCovChart(ma);
+
+  // Covenant summary cards
+  const latestCov=chiTieus.map(ct=>{
+    const rows=covRows.filter(r=>r["Chỉ tiêu cam kết"]===ct);
+    return rows[rows.length-1];
+  }).filter(Boolean);
+  document.getElementById('p3-covenant-summary').innerHTML=`<div class="cols${latestCov.length}" style="margin-top:0">`+latestCov.map(r=>`
+    <div class="cov-card ${r["Status (ok/ break)"]==="break"?"breach":""}">
+      <div style="font-size:11px;font-weight:700;color:#1F2937;margin-bottom:4px">${r["Chỉ tiêu cam kết"]}</div>
+      <div style="font-size:18px;font-weight:700;color:${r["Status (ok/ break)"]==="ok"?"#166534":"#991B1B"}">${r["Giá trị thực hiện"]}</div>
+      <div style="font-size:10px;color:#6B7280">Cam kết: ${r["Giá trị cam kết"]} · ${r["Status (ok/ break)"]==="ok"?"✓ OK":"✗ Vi phạm"}</div>
+      <div style="font-size:10px;color:#6B7280">${r["Cam kết với bank nào"]} · HM: ${r["Giá trị Hạn mức tín dụng"]}B · Dư nợ: ${r["Giá trị dư nợ hiện tại"]}B</div>
+      <div style="font-size:10px;color:#6B7280">Đáo hạn: ${r["Thời gian đáo hạn"]}</div>
+    </div>`).join('')+'</div>';
+}
+
+function renderCovChart(ma){
+  const chiTieus=[...new Set(RATIO_ROWS.filter(r=>r["Mã đơn vị"]===ma).map(r=>r["Chỉ tiêu cam kết"]))];
+  const ct=chiTieus[covTabIdx]; if(!ct)return;
+  const rows=RATIO_ROWS.filter(r=>r["Mã đơn vị"]===ma&&r["Chỉ tiêu cam kết"]===ct);
+  if(!rows.length)return;
+  const lim=parseFloat(rows[0]["Giá trị cam kết"].replace(/[<>]/g,""));
+  const labels=rows.map(r=>`${r["Năm"]}-${r["Quý"]}`);
+  const vals=rows.map(r=>r["Giá trị thực hiện"]);
+  const colors=rows.map(r=>r["Status (ok/ break)"]==="ok"?"#166534":"#991B1B");
+  Plotly.newPlot('chart-covenant',[
+    {name:ct,x:labels,y:vals,type:'scatter',mode:'lines+markers',
+     line:{color:'#1565C0',width:2},marker:{color:colors,size:6},
+     hovertemplate:`${ct}: %{y}<br>Kỳ: %{x}<br>Status: %{customdata}<extra></extra>`,
+     customdata:rows.map(r=>r["Status (ok/ break)"])},
+    {name:`Ngưỡng cam kết ${rows[0]["Giá trị cam kết"]}`,x:labels,y:Array(labels.length).fill(lim),
+     type:'scatter',mode:'lines',line:{color:'#F59E0B',width:1.5,dash:'dash'},
+     hoverinfo:'none'},
+  ],{height:200,margin:{t:6,b:40,l:50,r:10},
+     legend:{orientation:'h',y:-0.4,font:{size:10}},
+     xaxis:{tickangle:-45,tickfont:{size:8}},yaxis:{tickfont:{size:9}},
+     paper_bgcolor:'transparent',plot_bgcolor:'#F9FAFB',font:{family:'Arial'},
+     shapes:[{type:'rect',xref:'paper',yref:'paper',x0:0,y0:0,x1:1,y1:1,line:{width:0},
+       fillcolor:'transparent'}]},{responsive:true});
+}
+
+// ── PAGE 4 — ADL ───────────────────────────────────────────────────────────────
+const LIFECYCLE=["Embryonic","Growth","Mature","Ageing"];
+const COMP_POS=["Dominant","Strong","Favourable","Tenable","Weak"];
+let adlState={...ADL_INIT};
+function renderP4(){
+  // Matrix
+  const thead=`<thead><tr><th style="text-align:right;font-size:10px;color:#6B7280;background:#FFF">Cạnh tranh ↓ / Ngành →</th>${LIFECYCLE.map(l=>`<th>${l}</th>`).join('')}</tr></thead>`;
+  const tbody=`<tbody>${COMP_POS.map(comp=>`<tr><td>${comp}</td>${LIFECYCLE.map(life=>{
+    const key=`${comp}-${life}`;
+    const items=Object.entries(adlState).filter(([,v])=>v===key).map(([k])=>k);
+    const grp=ENTITIES.find(e=>e.ma===items[0])?.group||"GEE";
+    return `<td><div class="adl-cell">${ADL_STRAT[key]||""}</div><div class="adl-tags">${items.map(code=>{
+      const g=ENTITIES.find(e=>e.ma===code)?.group||"GEE";
+      return `<span class="adl-tag" style="background:${GC[g]}22;color:${GC[g]};border:1px solid ${GC[g]}44">${code}</span>`;
+    }).join('')}</div></td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  document.getElementById('adl-matrix-table').innerHTML=thead+tbody;
+
+  // Summary table
+  document.getElementById('adl-summary-table').innerHTML=`
+    <thead><tr>${["Mã đơn vị","Group","Industry Lifecycle","Vị thế cạnh tranh","Chiến lược gợi ý","Hàm ý dòng tiền","Khuyến nghị cổ tức"].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${ENTITIES.map(e=>{
+      const[comp,life]=(adlState[e.ma]||"Strong-Mature").split("-");
+      return `<tr>
+        <td style="font-weight:700;color:${GC[e.group]}">${e.ma}</td>
+        <td><span class="badge ${e.group.toLowerCase()}">${e.group}</span></td>
+        <td style="color:#166534">${life||"—"}</td>
+        <td style="color:#6B21A8">${comp||"—"}</td>
+        <td style="font-size:10px;color:#6B7280">${ADL_STRAT[adlState[e.ma]]||"—"}</td>
+        <td style="font-size:10px">${ADL_CASH[adlState[e.ma]]||"—"}</td>
+        <td style="font-size:10px;color:#6B7280">${ADL_DIV[adlState[e.ma]]||"—"}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  // Capital allocation
+  const generators=ENTITIES.filter(e=>{const[,l]=(adlState[e.ma]||"").split("-");return l==="Mature"||l==="Ageing";});
+  const consumers =ENTITIES.filter(e=>{const[,l]=(adlState[e.ma]||"").split("-");return l==="Embryonic"||l==="Growth";});
+  document.getElementById('adl-generators').innerHTML=generators.map(e=>`
+    <div style="display:flex;justify-content:space-between;padding:7px 10px;background:#F0FDF4;border-radius:6px;margin-bottom:6px">
+      <div><span style="font-size:11px;font-weight:700;color:${GC[e.group]}">${e.ma}</span><span style="font-size:10px;color:#6B7280;margin-left:8px">${(adlState[e.ma]||"").replace("-"," · ")}</span></div>
+      <span style="font-size:10px;color:#166534">${(ADL_CASH[adlState[e.ma]]||"").split(".")[0]}</span>
+    </div>`).join('')||'<div style="color:#6B7280;font-size:11px">Không có</div>';
+  document.getElementById('adl-consumers').innerHTML=consumers.map(e=>`
+    <div style="display:flex;justify-content:space-between;padding:7px 10px;background:#FEF2F2;border-radius:6px;margin-bottom:6px">
+      <div><span style="font-size:11px;font-weight:700;color:${GC[e.group]}">${e.ma}</span><span style="font-size:10px;color:#6B7280;margin-left:8px">${(adlState[e.ma]||"").replace("-"," · ")}</span></div>
+      <span style="font-size:10px;color:#991B1B">Cần hỗ trợ vốn</span>
+    </div>`).join('')||'<div style="color:#6B7280;font-size:11px">Không có</div>';
+  document.getElementById('adl-dividend-table').innerHTML=`
+    <thead><tr>${["Mã đơn vị","Group","Vị thế ADL","Khuyến nghị cổ tức"].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${ENTITIES.map(e=>`<tr>
+      <td style="font-weight:700;color:${GC[e.group]}">${e.ma}</td>
+      <td><span class="badge ${e.group.toLowerCase()}">${e.group}</span></td>
+      <td style="font-size:10px;color:#6B7280">${(adlState[e.ma]||"").replace("-"," · ")}</td>
+      <td style="font-size:10px">${ADL_DIV[adlState[e.ma]]||"—"}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+renderP0();
+</script>
+</body>
+</html>
