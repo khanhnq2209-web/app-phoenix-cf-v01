@@ -3,4 +3,5 @@ plotly>=5.0
 pandas>=2.0
 python-dotenv
 python-calamine
+msal
 gex_msgraph @ git+https://github.com/khanh-at-gex/gex-msgraph.git
